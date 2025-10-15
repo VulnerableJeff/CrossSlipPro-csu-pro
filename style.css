@@ -33,3 +33,30 @@
 dialog{border:none;padding:0;background:transparent}
 @media (max-width:900px){.cols-3{grid-template-columns:1fr}.cols-2{grid-template-columns:1fr}}
 .light{--bg:#f7f8fb;--fg:#0e1013;--card:#ffffff;--border:#e6e8ef;--muted:#57606a}
+/* ===== Tidy pass: mobile-first spacing & simplicity ===== */
+.container { padding: 12px; }
+.card { padding: 14px; border-radius: 14px; box-shadow: 0 8px 24px -16px rgba(0,0,0,.35); }
+.dropzone { min-height: 140px; }
+.nav { display:flex; align-items:center; gap: 8px; flex-wrap: wrap; }
+.nav .icon { padding: 8px 10px; border-radius: 10px; }
+.badge { font-size: 11px; padding: 3px 8px; }
+
+.grid.gap { gap: 12px; }
+.cols-3 { grid-template-columns: 1fr; }    /* default to 1-column; less clutter */
+.cols-2 { grid-template-columns: 1fr; }
+
+@media (min-width: 900px){
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .container { padding: 16px; }
+  .card { padding: 16px; }
+}
+
+/* List inputs a little tighter */
+.list input { padding: 8px 10px; border-radius: 10px; }
+
+/* Share block visuals */
+.share-preview { background: #11151b; }
+
+/* Settings dialog size */
+dialog .card { width: min(520px, 92vw); }
