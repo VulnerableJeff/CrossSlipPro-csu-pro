@@ -1,155 +1,99 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="CrossSlipPro — AI-powered cross-sportsbook bet slip analyzer." />
   <title>CrossSlipPro — CSU Pro</title>
-
   <link rel="stylesheet" href="style.css" />
-
-  <!-- OCR library (main script loads workers/wasm via local-or-CDN fallback) -->
+  <!-- Tesseract main (workers/wasm are set in script.js) -->
   <script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 </head>
 <body>
-  <!-- Header -->
-  <header class="site-header clean">
-    <div class="container header-row">
+  <header class="site-header">
+    <div class="wrap">
       <a class="brand" href="#">
-        <img src="assets/logo.png" alt="CrossSlipPro" class="logo" />
-        <span class="brand-text">CrossSlipPro <span class="brand-sub">CSU Pro</span></span>
+        <img class="logo" src="assets/logo.png" alt="CrossSlipPro" />
+        <span class="brand-text">CrossSlipPro <span class="sub">CSU Pro</span></span>
       </a>
       <nav class="nav">
-        <a href="#" class="nav-link" id="navHome">Home</a>
-        <a href="#how" class="nav-link">How it works</a>
-        <a href="#privacy" class="nav-link">Privacy</a>
-        <div class="nav-sep"></div>
-        <button id="modeBtn" class="nav-btn" title="Dark/Light">◐</button>
+        <a href="#how">How it works</a>
+        <a href="#privacy">Privacy</a>
       </nav>
     </div>
   </header>
 
-  <!-- Intro -->
-  <section class="container intro">
-    <h1>AI-powered cross-sportsbook slip analyzer</h1>
-    <p class="muted">Upload screenshots from FanDuel, DraftKings, Hard Rock, BetMGM, and more. Analyze odds, EV, and confidence instantly.</p>
-  </section>
+  <main class="wrap">
+    <section class="hero">
+      <h1>AI-powered cross-sportsbook slip analyzer</h1>
+      <p class="muted">Upload a bet screenshot. We read the teams & odds and estimate win chance, EV, and confidence.</p>
+    </section>
 
-  <!-- Main -->
-  <main class="container">
-
-    <!-- Mode toggle -->
-    <div class="row between mb">
-      <div class="muted sm">Mode</div>
-      <div class="mode-toggle">
-        <button id="simpleModeBtn" class="primary small">Simple</button>
-        <button id="proModeBtn" class="ghost small">Pro</button>
-      </div>
-    </div>
-
-    <!-- Upload card -->
-    <section class="card" id="card-upload">
-      <h3>Upload bet screenshot</h3>
-      <p class="muted sm">Drag & drop or choose a file. OCR runs in your browser.</p>
-
-      <div class="dropzone" id="drop">
-        <input type="file" id="file" accept="image/*" multiple hidden />
-        <button class="primary" id="pick">Choose images</button>
+    <section class="card" id="uploadCard">
+      <div class="drop" id="drop">
+        <input id="file" type="file" accept="image/*" hidden multiple />
+        <button id="pick" class="btn primary">Choose image</button>
         <div id="thumbs" class="thumbs"></div>
       </div>
 
       <div class="row gap mt">
-        <button class="primary" id="analyzeBtn">Analyze</button>
-        <button class="ghost" id="clearBtn">Clear</button>
+        <button id="analyze" class="btn primary">Analyze</button>
+        <button id="clear" class="btn ghost">Clear</button>
         <span id="status" class="muted"></span>
       </div>
 
-      <div class="mt">
-        <details>
-          <summary>Paste text instead</summary>
-          <textarea id="pasteText" class="input" rows="6" placeholder="Paste slip text (teams & odds like +145 / -110)"></textarea>
-          <div class="row gap mt">
-            <button class="ghost" id="usePasted">Use pasted text</button>
-            <span class="muted sm">We’ll parse and analyze without OCR.</span>
-          </div>
-        </details>
-      </div>
+      <details class="mt">
+        <summary>Paste text instead</summary>
+        <textarea id="pasteText" class="input" rows="5" placeholder="Paste slip text (teams & odds like +145 / -110)"></textarea>
+        <div class="row gap mt">
+          <button id="usePasted" class="btn ghost">Analyze pasted text</button>
+          <small class="muted">Useful if OCR can’t read your screenshot.</small>
+        </div>
+      </details>
+
+      <div id="diag" class="diag hidden"></div>
     </section>
 
-    <!-- Summary -->
-    <section class="card fade" id="card-summary">
-      <h3>Summary</h3>
+    <section class="card" id="resultCard" hidden>
+      <h2>Summary</h2>
       <div class="kpis">
-        <div class="kpi"><div class="kpi-label">Win chance</div><div id="pWin" class="kpi-value">—</div></div>
-        <div class="kpi"><div class="kpi-label">Expected value</div><div id="pEV" class="kpi-value">—</div></div>
-        <div class="kpi"><div class="kpi-label">Profit if win</div><div id="pProfit" class="kpi-value">—</div></div>
+        <div class="kpi"><div class="label">Win chance</div><div id="kWin" class="value">—</div></div>
+        <div class="kpi"><div class="label">Expected value</div><div id="kEV" class="value">—</div></div>
+        <div class="kpi"><div class="label">Profit if win</div><div id="kProfit" class="value">—</div></div>
       </div>
+
       <div class="row gap mt">
         <div class="grow">
-          <div class="bar"><div id="confBar"></div></div>
-          <div class="muted sm">Confidence: <span id="confPct">—</span></div>
+          <div class="bar"><div id="bar"></div></div>
+          <div class="muted sm">Confidence: <span id="conf">—</span></div>
         </div>
-        <label class="stake-box">Stake ($)
+        <label class="stake">Stake ($)
           <input id="stake" class="input" type="number" value="20" min="0" />
         </label>
       </div>
+
       <ul id="insights" class="bullets mt"></ul>
     </section>
 
-    <!-- Pro (hidden in Simple) -->
-    <section class="card advanced" id="card-edit">
-      <h3>Edit parsed slip</h3>
-      <details open>
-        <summary>Basics</summary>
-        <div class="grid cols-2 gap mt">
-          <label>Sportsbook <input id="book" class="input" placeholder="Unknown" /></label>
-          <label>League <input id="league" class="input" placeholder="NBA / NFL / MLB / etc." /></label>
-          <label>Market <input id="market" class="input" placeholder="Moneyline / Spread / Total / Prop" /></label>
-          <label>Title <input id="title" class="input" placeholder="Optional title" /></label>
-        </div>
-      </details>
-      <details>
-        <summary>Teams & odds</summary>
-        <div class="grid cols-3 mt gap">
-          <div>
-            <div class="row between"><span class="label">Teams</span><button class="chip" id="addTeam">+ Add</button></div>
-            <ul id="teams" class="list"></ul>
-          </div>
-          <div>
-            <div class="row between"><span class="label">Your odds</span><button class="chip" id="addOdds">+ Add</button></div>
-            <ul id="odds" class="list"></ul>
-          </div>
-          <div>
-            <div class="row between"><span class="label">Compare book</span><button class="chip" id="addComp">+ Add</button></div>
-            <ul id="competitor" class="list"></ul>
-          </div>
-        </div>
-      </details>
-    </section>
-
-    <!-- Info -->
-    <section class="card" id="how">
-      <h3>How it works</h3>
+    <section id="how" class="card">
+      <h2>How it works</h2>
       <ul class="bullets">
-        <li>OCR & analysis happen locally in your browser.</li>
-        <li>Edit teams/odds in Pro mode if OCR misses anything.</li>
-        <li>We compute probability, EV, Kelly, and a confidence score.</li>
+        <li>OCR runs locally in your browser (no uploads to a server).</li>
+        <li>If OCR misses something, use “Paste text instead”.</li>
+        <li>We compute probability, EV and a confidence score.</li>
       </ul>
     </section>
 
-    <section class="card" id="privacy">
-      <h3>Privacy</h3>
+    <section id="privacy" class="card">
+      <h2>Privacy</h2>
       <ul class="bullets">
-        <li>No accounts or sportsbook credentials required.</li>
-        <li>No server-side storage; everything runs client-side.</li>
+        <li>No logins or sportsbook connections required.</li>
+        <li>No server storage — everything is client-side.</li>
       </ul>
     </section>
   </main>
 
   <footer class="site-footer">
-    <div class="container muted sm">
-      © <span id="year"></span> CrossSlipPro — Built by <b>VulnerableJeff</b>
-    </div>
+    <div class="wrap muted sm">© <span id="year"></span> CrossSlipPro — Built by <b>VulnerableJeff</b></div>
   </footer>
 
   <script src="script.js"></script>
