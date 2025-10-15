@@ -447,3 +447,32 @@ $("#clearBtn")?.addEventListener("click", () => {
   state.teams = []; state.odds = []; state.competitor = [];
   $("#status").textContent = ""; renderLists();
 });
+// ----- Simple / Pro mode -----
+document.body.classList.add("simple");
+$("#simpleModeBtn")?.addEventListener("click", ()=>{
+  document.body.classList.add("simple");
+  $("#simpleModeBtn").classList.replace("ghost","primary");
+  $("#proModeBtn").classList.replace("primary","ghost");
+  scrollTo({top:0,behavior:"smooth"});
+});
+$("#proModeBtn")?.addEventListener("click", ()=>{
+  document.body.classList.remove("simple");
+  $("#simpleModeBtn").classList.replace("primary","ghost");
+  $("#proModeBtn").classList.replace("ghost","primary");
+});
+
+// After successful analyze → focus Summary card
+function scrollToSummary(){
+  const el = document.getElementById("card-summary");
+  if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+// Hook into your analyze success path:
+const _oldAnalyzeClick = $("#analyzeBtn")?.onclick;
+if (_oldAnalyzeClick) {
+  $("#analyzeBtn").onclick = async () => {
+    await _oldAnalyzeClick();
+    // if numbers are populated, jump to summary
+    if (document.getElementById("pWin")?.textContent !== "—") scrollToSummary();
+  };
+     }
