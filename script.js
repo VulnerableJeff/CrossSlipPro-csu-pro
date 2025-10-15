@@ -1,10 +1,10 @@
-// ---------- helpers ----------
-const $ = sel => document.querySelector(sel);
+// --- helpers ---
+const $ = s => document.querySelector(s);
 const pct = x => `${(Math.max(0,Math.min(1,x))*100).toFixed(1)}%`;
 const currency = x => Number.isFinite(+x) ? `$${(+x).toFixed(2)}` : "—";
 const product = arr => arr.reduce((a,b)=>a*b, arr.length?1:0);
 
-// ---------- odds math ----------
+// --- odds math ---
 function americanToImplied(n){
   n = Number(String(n).replace(/\s+/g,""));
   if(!Number.isFinite(n) || n===0) return null;
@@ -18,70 +18,78 @@ function devigTwoWay(a,b){
   if(!A||!B) return null; const s=A.implied+B.implied; if(s<=0) return null;
   return {pA:A.implied/s, pB:B.implied/s};
 }
-function kelly(prob, dec){ const b=dec-1, p=prob, q=1-prob; if(b<=0) return 0; return Math.max(0,Math.min(1,(b*p-q)/b)); }
+function kelly(p, dec){ const b=dec-1, q=1-p; if(b<=0) return 0; return Math.max(0,Math.min(1,(b*p - q)/b)); }
 
-// ---------- state ----------
+// --- state ---
 const S = { files:[], text:"", odds:[], teams:[], competitor:[] };
 
-// ---------- super simple parsing ----------
+// --- parsing ---
 function parseSlipText(text){
   const odds = Array.from(new Set((text.match(/[+\-]\s?\d{2,4}/g)||[]).map(s=>s.replace(/\s+/g,"")))).slice(0,12);
   const teams = Array.from(new Set((text.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\b/g)||[]))).slice(0,odds.length);
   return { odds, teams };
 }
 
-// ---------- OCR config (self-host first, then CDN) ----------
-const LOCAL = {
-  corePath:  "./vendor/tesseract/tesseract-core.wasm.js",
-  workerPath:"./vendor/tesseract/worker.min.js",
-  langPath:  "./vendor/tesseract/lang-data",
-  logger: m => console.debug("[tesseract]", m)
-};
-const CDN = {
-  corePath:  "https://unpkg.com/tesseract.js-core@5.0.0/dist/tesseract-core.wasm.js",
-  workerPath:"https://unpkg.com/tesseract.js@5.1.0/dist/worker.min.js",
-  langPath:  "https://tessdata.projectnaptha.com/5",
-  logger: m => console.debug("[tesseract]", m)
-};
+// --- OCR source sets: local, jsDelivr, unpkg ---
+const SOURCES = [
+  {
+    name:"local",
+    corePath:"./vendor/tesseract/tesseract-core.wasm.js",
+    workerPath:"./vendor/tesseract/worker.min.js",
+    langPath:"./vendor/tesseract/lang-data"
+  },
+  {
+    name:"jsdelivr",
+    corePath:"https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/dist/tesseract-core.wasm.js",
+    workerPath:"https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/worker.min.js",
+    langPath:"https://tessdata.projectnaptha.com/5"
+  },
+  {
+    name:"unpkg",
+    corePath:"https://unpkg.com/tesseract.js-core@5.0.0/dist/tesseract-core.wasm.js",
+    workerPath:"https://unpkg.com/tesseract.js@5.1.0/dist/worker.min.js",
+    langPath:"https://tessdata.projectnaptha.com/5"
+  }
+];
 
-async function fileExists(url){
-  try{
-    const r = await fetch(url, { method:"HEAD", cache:"no-store" });
-    return r.ok;
-  }catch{ return false; }
+async function headOK(url){
+  try { const r = await fetch(url, {method:"HEAD", cache:"no-store"}); return r.ok; }
+  catch { return false; }
+}
+
+async function selectTesseract(){
+  for (const src of SOURCES){
+    const okWorker = await headOK(src.workerPath);
+    const okCore   = await headOK(src.corePath);
+    const okLang   = await headOK(`${src.langPath}/eng.traineddata.gz`);
+    if (okWorker && okCore && okLang) return src;
+  }
+  // If all head checks fail, still return jsDelivr and let runtime attempt (some CDNs block HEAD)
+  return SOURCES[1];
 }
 
 async function runOCR(files){
   const status = $("#status"), diag=$("#diag");
   status.textContent = "Running OCR…";
   diag.classList.add("hidden");
-  const chunks = [];
 
-  // check local first
-  const localOk = await Promise.all([
-    fileExists(LOCAL.workerPath),
-    fileExists(LOCAL.corePath),
-    fileExists(`${LOCAL.langPath}/eng.traineddata.gz`)
-  ]);
-
-  const useLocal = localOk.every(Boolean);
-  const OPTS = useLocal ? LOCAL : CDN;
-
-  if(!useLocal){
+  const src = await selectTesseract();
+  if (src.name !== "local"){
     diag.classList.remove("hidden");
-    diag.innerHTML = `
-      <b>OCR notice:</b> Using CDN because local files missing.<br>
-      Missing locally:
-      <ul>
-        ${!localOk[0] ? "<li>vendor/tesseract/worker.min.js</li>" : ""}
-        ${!localOk[1] ? "<li>vendor/tesseract/tesseract-core.wasm.js</li>" : ""}
-        ${!localOk[2] ? "<li>vendor/tesseract/lang-data/eng.traineddata.gz</li>" : ""}
-      </ul>`;
+    diag.innerHTML = `Using <b>${src.name}</b> CDN for OCR (local files not found).`;
   }
 
+  const opts = {
+    corePath:  src.corePath,
+    workerPath:src.workerPath,
+    langPath:  src.langPath,
+    logger: m => console.debug("[tesseract]", m)
+  };
+
+  const chunks = [];
   try{
     for(const f of files){
-      const { data } = await Tesseract.recognize(f, "eng", OPTS);
+      const { data } = await Tesseract.recognize(f, "eng", opts);
       chunks.push(data.text || "");
     }
   }catch(err){
@@ -91,18 +99,18 @@ async function runOCR(files){
   }
 
   status.textContent = "OCR complete.";
-  return chunks.join("\n---\n");
+  return chunks.join("\\n---\\n");
 }
 
-// ---------- analysis ----------
+// --- analysis ---
 function analyze(){
-  const stake = Number($("#stake").value || 0);
+  const stake = Number($("#stake")?.value || 20);
   const legs = S.odds.map((o,i)=>{
     const you = americanToImplied(o);
     if(!you) return null;
     const comp = S.competitor[i] ? Number(S.competitor[i]) : null;
-    let fair = null, edge = null;
-    if(Number.isFinite(comp)){ const dv = devigTwoWay(Number(o), comp); if(dv){ fair=dv.pA; edge=fair-you.implied; } }
+    let fair=null, edge=null;
+    if(Number.isFinite(comp)){ const dv=devigTwoWay(Number(o),comp); if(dv){ fair=dv.pA; edge=fair-you.implied; } }
     return { who:S.teams[i] || `Leg ${i+1}`, ...you, fair, edge };
   }).filter(Boolean);
 
@@ -112,76 +120,68 @@ function analyze(){
   const profit = stake*(dec-1);
   const ev = p*profit - (1-p)*stake;
 
-  $("#kWin").textContent = pct(p);
-  $("#kProfit").textContent = currency(profit);
-  $("#kEV").textContent = currency(ev);
+  $("#kWin").textContent   = pct(p);
+  $("#kProfit").textContent= currency(profit);
+  $("#kEV").textContent    = currency(ev);
 
   let conf = Math.min(1, Math.max(0, p*0.7 + Math.min(0.3, legs.filter(l=>l.edge>0).length*0.05)));
   $("#conf").textContent = pct(conf);
   $("#bar").style.width = `${conf*100}%`;
 
-  const tips = [];
-  legs.forEach(l => {
-    if(l.edge !== null){
-      if(l.edge > 0.03) tips.push(`Value on ${l.who}: ${(l.edge*100).toFixed(1)}% ✅`);
-      else if(l.edge < -0.03) tips.push(`Weak price on ${l.who}: ${(l.edge*100).toFixed(1)}% ❌`);
+  const tips=[];
+  legs.forEach(l=>{
+    if(l.edge!==null){
+      if(l.edge>0.03) tips.push(`Value on ${l.who}: ${(l.edge*100).toFixed(1)}% ✅`);
+      else if(l.edge<-0.03) tips.push(`Weak price on ${l.who}: ${(l.edge*100).toFixed(1)}% ❌`);
     }
   });
-  if(dec >= 2 && p < 0.5) tips.push("Long odds with sub-50% win chance — consider smaller stake.");
-  tips.push(ev >= 0 ? `Positive EV overall: +${currency(ev)} on ${currency(stake)}` : `Negative EV overall: -${currency(Math.abs(ev))} — price shop or trim legs.`);
+  if(dec>=2 && p<0.5) tips.push("Long odds with sub-50% win chance — consider smaller stake.");
+  tips.push(ev>=0 ? `Positive EV overall: +${currency(ev)} on ${currency(stake)}` : `Negative EV overall: -${currency(Math.abs(ev))} — price shop or trim legs.`);
   $("#insights").innerHTML = tips.slice(0,4).map(t=>`<li>${t}</li>`).join("");
 
   $("#resultCard").hidden = false;
   $("#resultCard").scrollIntoView({behavior:"smooth", block:"start"});
 }
 
-// ---------- file handlers ----------
+// --- file handling & actions ---
 const drop = $("#drop"), picker = $("#file"), pickBtn = $("#pick"), thumbs = $("#thumbs");
 pickBtn.addEventListener("click", ()=>picker.click());
 picker.addEventListener("change", e => handleFiles(e.target.files));
-
 drop.addEventListener("dragover", e=>{e.preventDefault();});
 drop.addEventListener("drop", e=>{e.preventDefault(); handleFiles(e.dataTransfer.files);});
 
 function handleFiles(list){
   S.files = Array.from(list||[]);
   thumbs.innerHTML = "";
-  S.files.forEach(f => {
-    const url = URL.createObjectURL(f);
-    const img = document.createElement("img");
-    img.src = url; thumbs.appendChild(img);
-  });
+  S.files.forEach(f => { const url=URL.createObjectURL(f); const img=document.createElement("img"); img.src=url; thumbs.appendChild(img); });
 }
 
-// ---------- buttons ----------
 $("#analyze").addEventListener("click", async ()=>{
-  const status = $("#status");
+  const status=$("#status");
   if(!S.files.length){ status.textContent="Choose an image first."; return; }
   try{
     const text = await runOCR(S.files);
     const parsed = parseSlipText(text);
-    S.text = text; S.odds = parsed.odds; S.teams = parsed.teams;
-    if(!S.odds.length){ status.textContent="OCR finished, but no odds found. Paste manually."; return; }
-    status.textContent = "Done ✔"; analyze();
+    S.text=text; S.odds=parsed.odds; S.teams=parsed.teams;
+    if(!S.odds.length){ status.textContent="OCR finished but no odds found. Paste manually."; return; }
+    status.textContent="Done ✔"; analyze();
   }catch(_e){ /* message already shown */ }
 });
 
-$("#usePasted").addEventListener("click",(e)=>{
+$("#usePasted").addEventListener("click", e=>{
   e.preventDefault();
-  const txt = ($("#pasteText").value || "").trim();
-  const status = $("#status");
+  const txt = ($("#pasteText").value||"").trim();
+  const status=$("#status");
   if(!txt){ status.textContent="Paste text first."; return; }
   const parsed = parseSlipText(txt);
-  S.text = txt; S.odds = parsed.odds; S.teams = parsed.teams;
+  S.text=txt; S.odds=parsed.odds; S.teams=parsed.teams;
   if(!S.odds.length){ status.textContent="No odds detected. Include +145 / -110 etc."; return; }
-  status.textContent = "Parsed ✔"; analyze();
+  status.textContent="Parsed ✔"; analyze();
 });
 
 $("#clear").addEventListener("click", ()=>{
   S.files=[]; S.text=""; S.odds=[]; S.teams=[]; S.competitor=[];
-  thumbs.innerHTML=""; $("#status").textContent="";
-  $("#resultCard").hidden = true;
+  thumbs.innerHTML=""; $("#status").textContent=""; $("#resultCard").hidden=true;
 });
 
-// misc
 $("#year").textContent = new Date().getFullYear();
