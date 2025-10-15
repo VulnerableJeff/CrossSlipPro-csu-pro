@@ -60,3 +60,17 @@ dialog{border:none;padding:0;background:transparent}
 
 /* Settings dialog size */
 dialog .card { width: min(520px, 92vw); }
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo {
+  height: 40px;
+  width: auto;
+  border-radius: 8px;
+}
+@media (max-width: 600px) {
+  .logo { height: 32px; }
+  .brand { font-size: 18px; }
+}
