@@ -1,0 +1,45 @@
+body {
+  font-family: "Poppins", sans-serif;
+  background: #0e1013;
+  color: #f8f8f8;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+header {
+  background: #161a1f;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+h1 {
+  color: #00ffc6;
+  margin: 0.3em 0;
+}
+.upload-section {
+  background: #1c2128;
+  margin: 2rem auto;
+  padding: 2rem;
+  border-radius: 1rem;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+button {
+  background: #00ffc6;
+  color: #0e1013;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+button:hover {
+  background: #00cfa1;
+}
+footer {
+  margin-top: 2rem;
+  padding: 1rem;
+  font-size: 0.9em;
+  color: #aaa;
+}
