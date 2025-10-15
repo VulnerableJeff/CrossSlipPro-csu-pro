@@ -9,13 +9,13 @@
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- OCR + canvas (must load BEFORE script.js) -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+  <!-- OCR + Canvas (must load BEFORE script.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 
-  <!-- ===== Header ===== -->
+  <!-- Header -->
   <header class="site-header">
     <div class="container row between">
       <div class="brand">
@@ -23,22 +23,22 @@
         <span>CrossSlipPro <span class="muted">— CSU Pro</span></span>
       </div>
       <nav class="nav">
-        <a href="#" id="navHome" title="Home">Home</a>
-        <a href="#how" title="How it works">How it works</a>
-        <a href="#privacy" title="Privacy">Privacy</a>
+        <a href="#" id="navHome">Home</a>
+        <a href="#how">How it works</a>
+        <a href="#privacy">Privacy</a>
         <button id="settingsBtn" class="ghost icon" title="Settings">⚙️</button>
         <button id="modeBtn" class="ghost icon" title="Dark/Light">◐</button>
       </nav>
     </div>
   </header>
 
-  <!-- ===== Hero ===== -->
+  <!-- Intro -->
   <section class="container">
     <h2>AI-powered cross-sportsbook slip analyzer</h2>
     <p class="muted">Upload screenshots from FanDuel, DraftKings, Hard Rock, BetMGM, and more. Analyze odds, EV, and confidence instantly.</p>
   </section>
 
-  <!-- ===== Main (Simple / Pro) ===== -->
+  <!-- Main -->
   <main class="container">
 
     <!-- Mode toggle -->
@@ -50,17 +50,15 @@
       </div>
     </div>
 
-    <!-- 1) Upload -->
+    <!-- Upload -->
     <section class="card" id="card-upload">
       <h3>Upload bet screenshot</h3>
       <p class="muted sm">Drag & drop or choose a file. OCR runs in your browser.</p>
-
       <div class="dropzone" id="drop">
         <input type="file" id="file" accept="image/*" multiple hidden />
         <button class="primary" id="pick">Choose images</button>
         <div id="thumbs" class="thumbs"></div>
       </div>
-
       <div class="row gap mt">
         <button class="primary" id="analyzeBtn">Analyze</button>
         <button class="ghost" id="clearBtn">Clear</button>
@@ -68,23 +66,14 @@
       </div>
     </section>
 
-    <!-- 2) Summary (minimal) -->
+    <!-- Summary -->
     <section class="card" id="card-summary">
       <h3>Summary</h3>
 
       <div class="kpis">
-        <div class="kpi">
-          <div class="kpi-label">Win chance</div>
-          <div id="pWin" class="kpi-value">—</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Expected value</div>
-          <div id="pEV" class="kpi-value">—</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Profit if win</div>
-          <div id="pProfit" class="kpi-value">—</div>
-        </div>
+        <div class="kpi"><div class="kpi-label">Win chance</div><div id="pWin" class="kpi-value">—</div></div>
+        <div class="kpi"><div class="kpi-label">Expected value</div><div id="pEV" class="kpi-value">—</div></div>
+        <div class="kpi"><div class="kpi-label">Profit if win</div><div id="pProfit" class="kpi-value">—</div></div>
       </div>
 
       <div class="row gap mt">
@@ -145,13 +134,11 @@
     <section class="card advanced" id="card-market">
       <h3>Live market (optional)</h3>
       <p class="muted sm">Paste an API key in Settings to fetch The Odds API from your browser.</p>
-
       <div class="grid cols-3 gap">
         <label>Sport key <input id="sportKey" class="input" value="basketball_nba" /></label>
         <label>Region <input id="region" class="input" value="us" /></label>
         <label>Markets <input id="markets" class="input" value="h2h,spreads,totals" /></label>
       </div>
-
       <div class="row gap mt">
         <button class="ghost" id="matchBtn">Match live game</button>
         <span id="matchStatus" class="muted"></span>
@@ -163,14 +150,14 @@
     <div id="shareCard" style="position:absolute;left:-99999px;top:-99999px;"></div>
     <img id="shareImg" class="share-preview mt" style="display:none" />
 
-    <!-- How / Privacy (simple copy) -->
+    <!-- Explainers -->
     <section class="card" id="how">
       <h3>How it works</h3>
       <ul class="bullets">
         <li>Upload screenshots; OCR runs in your browser (no upload).</li>
-        <li>We auto-detect teams and odds (you can edit in Pro mode).</li>
+        <li>We auto-detect teams and odds (edit in Pro mode if needed).</li>
         <li>We compute implied probability, EV, Kelly, and confidence.</li>
-        <li>Optional live market lookup via your own Odds API key.</li>
+        <li>Optional live market via your own Odds API key.</li>
         <li>Create a shareable link or branded image card.</li>
       </ul>
     </section>
@@ -179,14 +166,14 @@
       <h3>Privacy</h3>
       <ul class="bullets">
         <li>OCR & analysis happen locally in your browser.</li>
-        <li>Live market calls, if used, go directly to The Odds API with your key.</li>
+        <li>Live market calls (if used) go directly to The Odds API with your key.</li>
         <li>No accounts or sportsbook credentials. Not betting advice.</li>
       </ul>
     </section>
 
   </main>
 
-  <!-- ===== Settings dialog ===== -->
+  <!-- Settings -->
   <dialog id="settings">
     <form method="dialog" class="card">
       <h3>Settings</h3>
@@ -201,14 +188,14 @@
     </form>
   </dialog>
 
-  <!-- ===== Footer ===== -->
+  <!-- Footer -->
   <footer class="site-footer">
     <div class="container muted sm">
       © <span id="year"></span> CrossSlipPro — Built by <b>VulnerableJeff</b> · Powered by CSU Predicts
     </div>
   </footer>
 
-  <!-- App script -->
+  <!-- App -->
   <script src="script.js"></script>
 </body>
 </html>
