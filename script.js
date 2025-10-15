@@ -7,10 +7,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const pct = x => `${(Math.max(0, Math.min(1, x))*100).toFixed(1)}%`;
 const currency  = x => (Number.isFinite(+x) ? `$${(+x).toFixed(2)}` : "—");
-const shortOdds = o => {
-  const n = Number(String(o).trim());
-  return Number.isFinite(n) ? (n>0?`+${n}`:`${n}`) : "—";
-};
+const shortOdds = o => { const n = Number(String(o).trim()); return Number.isFinite(n) ? (n>0?`+${n}`:`${n}`) : "—"; };
 const escapeHtml = s => String(s||"").replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
 
 /* ---------- Odds math ---------- */
@@ -22,18 +19,13 @@ function americanToImplied(n){
   const decimal = n>0 ? 1 + A/100 : 1 + 100/A;
   return {american:n, implied, decimal};
 }
-const product   = arr => arr.reduce((a,b)=>a*b, arr.length?1:0);
+const product = arr => arr.reduce((a,b)=>a*b, arr.length?1:0);
 function devigTwoWay(a,b){
   const A = americanToImplied(a), B = americanToImplied(b);
-  if(!A||!B) return null;
-  const s=A.implied+B.implied; if(s<=0) return null;
+  if(!A||!B) return null; const s=A.implied+B.implied; if(s<=0) return null;
   return {pA:A.implied/s, pB:B.implied/s};
 }
-function kelly(prob, decimal){
-  const b = decimal-1, p=prob, q=1-prob;
-  if(b<=0) return 0;
-  return Math.max(0, Math.min(1, (b*p - q)/b));
-}
+function kelly(prob, decimal){ const b=decimal-1, p=prob, q=1-prob; if(b<=0) return 0; return Math.max(0, Math.min(1, (b*p - q)/b)); }
 
 /* ---------- Share encoding ---------- */
 function encodeShare(obj){
@@ -41,11 +33,8 @@ function encodeShare(obj){
   return enc.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
 function decodeShare(s){
-  try{
-    s = s.replace(/-/g,"+").replace(/_/g,"/");
-    const pad = s.length%4 ? "=".repeat(4-(s.length%4)) : "";
-    return JSON.parse(decodeURIComponent(escape(atob(s+pad))));
-  }catch{ return null; }
+  try{ s=s.replace(/-/g,"+").replace(/_/g,"/"); const pad=s.length%4 ? "=".repeat(4-(s.length%4)) : ""; return JSON.parse(decodeURIComponent(escape(atob(s+pad)))); }
+  catch{ return null; }
 }
 
 /* ---------- App state ---------- */
@@ -56,27 +45,16 @@ const state = {
   oddsKey: localStorage.getItem("CSP_ODDS_KEY") || ""
 };
 
-/* ---------- Minimal parsed setters ---------- */
+/* ---------- Render helpers ---------- */
 function renderLists(){
-  const render = (id, arr, placeholder)=>{
-    const ul=$(id); if(!ul) return; ul.innerHTML="";
-    arr.forEach((v,i)=>{
-      const li=document.createElement("li");
-      li.innerHTML=`<input class="input" value="${escapeHtml(v)}" placeholder="${placeholder}">`;
-      li.querySelector("input").addEventListener("input", e=>arr[i]=e.target.value);
-      ul.appendChild(li);
-    });
-  };
+  const render=(id,arr,placeholder)=>{ const ul=$(id); if(!ul) return; ul.innerHTML=""; arr.forEach((v,i)=>{ const li=document.createElement("li"); li.innerHTML=`<input class="input" value="${escapeHtml(v)}" placeholder="${placeholder}">`; li.querySelector("input").addEventListener("input",e=>arr[i]=e.target.value); ul.appendChild(li); }); };
   render("#teams", state.teams, "Team or player");
   render("#odds", state.odds, "+145 / -110");
   render("#competitor", state.competitor, "Other book price");
 }
 function setParsed({book,league,market,teams,odds}){
-  state.book=book||"Unknown";
-  state.league=league||"Unknown";
-  state.market=market||"Unknown";
-  state.teams=teams||[];
-  state.odds=odds||[];
+  state.book=book||"Unknown"; state.league=league||"Unknown"; state.market=market||"Unknown";
+  state.teams=teams||[]; state.odds=odds||[];
   $("#book") && ($("#book").value=state.book);
   $("#league") && ($("#league").value=state.league);
   $("#market") && ($("#market").value=state.market);
@@ -85,26 +63,27 @@ function setParsed({book,league,market,teams,odds}){
   renderLists();
 }
 
-/* ---------- OCR + parsing ---------- */
+/* ---------- OCR (v5 pinned paths) ---------- */
+const TESS_OPTS = {
+  logger: () => {},
+  corePath:  "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/dist/tesseract-core.wasm.js",
+  workerPath:"https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/worker.min.js",
+  langPath:  "https://tessdata.projectnaptha.com/5",
+  tessedit_char_whitelist: "+-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:/ ."
+};
 async function runOCR(files){
   $("#status").textContent="Running OCR…";
-  const parts=[];
+  const chunks=[];
   for(const f of files){
-    const {data}=await Tesseract.recognize(f,"eng",{
-      tessedit_char_whitelist:"+ -0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:/."
-    });
-    parts.push(data.text||"");
+    const {data}=await Tesseract.recognize(f,"eng",TESS_OPTS);
+    chunks.push(data.text||"");
   }
   $("#status").textContent="OCR complete.";
-  return parts.join("\n---\n");
+  return chunks.join("\n---\n");
 }
 function detectBook(text){
-  const marks=[
-    ["FanDuel",/fanduel/i],["DraftKings",/draft\s?kings/i],["BetMGM",/bet\s?mgm/i],
-    ["Caesars",/caesars/i],["Hard Rock",/hard\s?rock/i],["BetRivers",/betrivers/i],["PointsBet",/pointsbet/i]
-  ];
-  for(const [n,re] of marks){ if(re.test(text)) return n; }
-  return "Unknown";
+  const marks=[["FanDuel",/fanduel/i],["DraftKings",/draft\s?kings/i],["BetMGM",/bet\s?mgm/i],["Caesars",/caesars/i],["Hard Rock",/hard\s?rock/i],["BetRivers",/betrivers/i],["PointsBet",/pointsbet/i]];
+  for(const [n,re] of marks){ if(re.test(text)) return n; } return "Unknown";
 }
 function parseSlip(text){
   const odds=Array.from(new Set((text.match(/[+\-]\s?\d{2,4}/g)||[]).map(x=>x.replace(/\s+/g,"")))).slice(0,20);
@@ -115,12 +94,12 @@ function parseSlip(text){
   return {league, market, teams, odds};
 }
 
-/* ---------- Analysis + UI ---------- */
+/* ---------- Analysis ---------- */
 function setTotalsUI({ pParlay, decParlay, profit, ev, k }){
   $("#pWin").textContent    = pParlay ? pct(pParlay) : "—";
   $("#pDec") && ($("#pDec").textContent = decParlay ? decParlay.toFixed(2) : "—");
-  $("#pProfit").textContent = Number.isFinite(profit) ? currency(profit) : "—";
-  $("#pEV").textContent     = Number.isFinite(ev) ? currency(ev) : "—";
+  $("#pProfit").textContent = Number.isFinite(profit) ? `$${profit.toFixed(2)}` : "—";
+  $("#pEV").textContent     = Number.isFinite(ev) ? `$${ev.toFixed(2)}` : "—";
   $("#kellyHalf") && ($("#kellyHalf").value = `${((k/2)*100).toFixed(1)}%`);
 }
 function analyze(){
@@ -141,98 +120,67 @@ function analyze(){
     return;
   }
 
-  const probs = legs.map(l => (l.fair ?? l.implied)).filter(Boolean);
-  const pParlay   = product(probs) || 0;
-  const decParlay = legs.reduce((a,l)=>a*(l.decimal||1),1);
-  const profit    = stake * (decParlay - 1);
-  const ev        = pParlay*profit - (1-pParlay)*stake;
-  const k         = kelly(pParlay, decParlay);
-  setTotalsUI({pParlay, decParlay, profit, ev, k});
+  const probs=legs.map(l=>(l.fair ?? l.implied)).filter(Boolean);
+  const pParlay=product(probs) || 0;
+  const decParlay=legs.reduce((a,l)=>a*(l.decimal||1),1);
+  const profit=stake*(decParlay-1);
+  const ev=pParlay*profit - (1-pParlay)*stake;
+  const k=kelly(pParlay,decParlay);
+  setTotalsUI({pParlay,decParlay,profit,ev,k});
 
-  // confidence (animated bar)
-  let conf = Math.min(1, Math.max(0, (pParlay*0.7 + Math.min(0.3, legs.filter(l=>l.edge>0).length*0.05))));
-  $("#confPct").textContent = pct(conf);
-  const bar=$("#confBar");
-  bar.style.width = `${conf*100}%`;
-  bar.setAttribute("role","progressbar");
-  bar.setAttribute("aria-valuemin","0");
-  bar.setAttribute("aria-valuemax","100");
-  bar.setAttribute("aria-valuenow", String(Math.round(conf*100)));
+  // confidence + animated bar
+  let conf=Math.min(1, Math.max(0, (pParlay*0.7 + Math.min(0.3, legs.filter(l=>l.edge>0).length*0.05))));
+  $("#confPct").textContent=pct(conf);
+  const bar=$("#confBar"); bar.style.width=`${conf*100}%`;
+  bar.setAttribute("role","progressbar"); bar.setAttribute("aria-valuemin","0"); bar.setAttribute("aria-valuemax","100"); bar.setAttribute("aria-valuenow", String(Math.round(conf*100)));
   bar.classList.remove("conf-low","conf-med","conf-high","conf-anim");
-  if(conf < 0.40)      bar.classList.add("conf-low");
-  else if(conf < 0.70) bar.classList.add("conf-med");
-  else                 bar.classList.add("conf-high");
-  if(conf >= 0.80) bar.classList.add("conf-anim");
+  if(conf<0.40) bar.classList.add("conf-low"); else if(conf<0.70) bar.classList.add("conf-med"); else bar.classList.add("conf-high");
+  if(conf>=0.80) bar.classList.add("conf-anim");
 
   // concise insights
   const tips=[];
-  legs.forEach(l=>{
-    if(l.edge!==null){
-      if(l.edge>0.03) tips.push(`Value on ${l.who}: edge ${(l.edge*100).toFixed(1)}% ✅`);
-      else if(l.edge<-0.03) tips.push(`Weak price on ${l.who}: edge ${(l.edge*100).toFixed(1)}% ❌`);
-    }
-  });
+  legs.forEach(l=>{ if(l.edge!==null){ if(l.edge>0.03) tips.push(`Value on ${l.who}: edge ${(l.edge*100).toFixed(1)}% ✅`); else if(l.edge<-0.03) tips.push(`Weak price on ${l.who}: edge ${(l.edge*100).toFixed(1)}% ❌`); }});
   if(decParlay>=2 && pParlay<0.5) tips.push("Long odds with sub-50% win chance — consider smaller stake.");
-  tips.push(ev>=0 ? `Positive EV overall: +${currency(ev)} on ${currency(stake)}` : `Negative EV overall: -${currency(Math.abs(ev))} — price shop or trim legs.`);
-
+  tips.push(ev>=0 ? `Positive EV overall: +$${ev.toFixed(2)} on $${stake}` : `Negative EV overall: -$${Math.abs(ev).toFixed(2)} — price shop or trim legs.`);
   const ul=$("#insights"); ul.innerHTML=""; tips.slice(0,4).forEach(t=>{ const li=document.createElement("li"); li.textContent=t; ul.appendChild(li); });
 
-  return {legs, pParlay, decParlay, profit, ev, kellyHalf:k/2, conf};
+  return {legs,pParlay,decParlay,profit,ev,kellyHalf:k/2,conf};
 }
 
 /* ---------- Live market (Pro) ---------- */
 async function fetchMarkets(){
-  const key = state.oddsKey;
+  const key=state.oddsKey;
   if(!key){ $("#matchStatus").textContent="Add your Odds API key in Settings."; return; }
   const sport=$("#sportKey")?.value.trim()||"basketball_nba";
   const region=$("#region")?.value.trim()||"us";
   const markets=$("#markets")?.value.trim()||"h2h,spreads,totals";
-
   $("#matchStatus").textContent="Fetching markets…";
   try{
     const url=`https://api.the-odds-api.com/v4/sports/${encodeURIComponent(sport)}/odds/?regions=${encodeURIComponent(region)}&markets=${encodeURIComponent(markets)}&oddsFormat=american&apiKey=${encodeURIComponent(key)}`;
-    const res=await fetch(url);
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res=await fetch(url); if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data=await res.json();
-    const teamsLower = state.teams.map(t=>(t||"").toLowerCase()).filter(Boolean);
-    const candidates = data.filter(ev=>{
-      const name=((ev.home_team||"")+" "+(ev.away_team||"")).toLowerCase();
-      return teamsLower.every(t=>name.includes(t));
-    });
-
+    const teamsLower=state.teams.map(t=>(t||"").toLowerCase()).filter(Boolean);
+    const candidates=data.filter(ev=>{ const name=((ev.home_team||"")+" "+(ev.away_team||"")).toLowerCase(); return teamsLower.every(t=>name.includes(t)); });
     const out=$("#marketOut"); out.innerHTML="";
     const list=candidates.slice(0,3);
     if(!list.length){ out.innerHTML=`<p class="muted sm">No clear match. Edit team names and try again.</p>`; $("#matchStatus").textContent=""; return; }
-
     list.forEach(ev=>{
       const card=document.createElement("div"); card.className="card mt";
-      const when=ev.commence_time ? new Date(ev.commence_time).toLocaleString() : "TBD";
+      const when=ev.commence_time?new Date(ev.commence_time).toLocaleString():"TBD";
       card.innerHTML=`<b>${escapeHtml(ev.home_team)} vs ${escapeHtml(ev.away_team)}</b><br><span class="muted sm">${when}</span>`;
       if(ev.bookmakers?.length){
-        const bm=ev.bookmakers.slice(0,3).map(b=>{
-          const h2h=(b.markets||[]).find(m=>m.key==="h2h");
-          const lines=h2h?.outcomes?.map(o=>`${escapeHtml(o.name)}: ${shortOdds(o.price)}`).join(" · ");
-          return `<div class="muted sm">${escapeHtml(b.title)}: ${lines || "n/a"}</div>`;
-        }).join("");
+        const bm=ev.bookmakers.slice(0,3).map(b=>{ const h2h=(b.markets||[]).find(m=>m.key==="h2h"); const lines=h2h?.outcomes?.map(o=>`${escapeHtml(o.name)}: ${shortOdds(o.price)}`).join(" · "); return `<div class="muted sm">${escapeHtml(b.title)}: ${lines||"n/a"}</div>`; }).join("");
         card.insertAdjacentHTML("beforeend", `<div class="mt">${bm}</div>`);
       }
       out.appendChild(card);
     });
     $("#matchStatus").textContent="Matched events shown below.";
-  }catch(e){
-    $("#matchStatus").textContent=`Fetch failed (${e.message}).`;
-  }
+  }catch(e){ $("#matchStatus").textContent=`Fetch failed (${e.message}).`; }
 }
 
 /* ---------- Share link ---------- */
 function genShare(){
-  const payload={
-    title:($("#title")?.value||"").trim(),
-    book:($("#book")?.value||"").trim(),
-    league:($("#league")?.value||"").trim(),
-    market:($("#market")?.value||"").trim(),
-    teams:state.teams, odds:state.odds, competitor:state.competitor
-  };
+  const payload={ title:($("#title")?.value||"").trim(), book:($("#book")?.value||"").trim(), league:($("#league")?.value||"").trim(), market:($("#market")?.value||"").trim(), teams:state.teams, odds:state.odds, competitor:state.competitor };
   $("#shareOut").value = `${location.origin}${location.pathname}#${encodeShare(payload)}`;
 }
 
@@ -262,31 +210,18 @@ if(drop){
 }
 function handleFiles(list){
   state.files=Array.from(list||[]);
-  if(!thumbs) return;
-  thumbs.innerHTML="";
-  state.files.forEach(f=>{
-    const url=URL.createObjectURL(f);
-    const img=document.createElement("img"); img.src=url; thumbs.appendChild(img);
-  });
+  if(!thumbs) return; thumbs.innerHTML="";
+  state.files.forEach(f=>{ const url=URL.createObjectURL(f); const img=document.createElement("img"); img.src=url; thumbs.appendChild(img); });
 }
 
 /* ---------- Share image (html2canvas) ---------- */
 let shareBlob=null, shareUrl="";
 function buildShareData(){
   const res=analyze();
-  const legs=(state.odds||[]).map((o,i)=>({
-    who: state.teams?.[i] || `Leg ${i+1}`,
-    odds: shortOdds(o),
-    comp: state.competitor?.[i] ? shortOdds(state.competitor[i]) : "—"
-  }));
-  return {
-    title: ($("#title")?.value || `${state.league} ${state.market}`).trim(),
-    book: state.book || "Unknown", league: state.league || "Unknown", market: state.market || "Unknown",
-    legs,
-    kpis:{ pWin:$("#pWin").textContent, pDec:$("#pDec")?$("#pDec").textContent:"—",
-           pProfit:$("#pProfit").textContent, pEV:$("#pEV").textContent, confPct:$("#confPct").textContent },
-    conf: Number(($("#confPct").textContent||"0%").replace("%",""))/100
-  };
+  const legs=(state.odds||[]).map((o,i)=>({ who: state.teams?.[i] || `Leg ${i+1}`, odds: shortOdds(o), comp: state.competitor?.[i] ? shortOdds(state.competitor[i]) : "—" }));
+  return { title:($("#title")?.value || `${state.league} ${state.market}`).trim(), book:state.book||"Unknown", league:state.league||"Unknown", market:state.market||"Unknown",
+    legs, kpis:{ pWin:$("#pWin").textContent, pDec:$("#pDec")?$("#pDec").textContent:"—", pProfit:$("#pProfit").textContent, pEV:$("#pEV").textContent, confPct:$("#confPct").textContent },
+    conf:Number(($("#confPct").textContent||"0%").replace("%",""))/100 };
 }
 function renderShareCardDOM(data){
   const el=$("#shareCard");
@@ -297,9 +232,7 @@ function renderShareCardDOM(data){
         <div class="sc-title">${escapeHtml(data.title)}</div>
         <div class="sc-meta">${escapeHtml(data.book)} · ${escapeHtml(data.league)} · ${escapeHtml(data.market)} · ${data.legs.length} leg(s)</div>
         <div class="sc-legs">
-          ${data.legs.slice(0,6).map(l=>`
-            <div class="leg"><div>${escapeHtml(l.who)}</div><div>${l.odds}${l.comp!=="—"?` <span style="color:#98a2b3">/ ${l.comp}</span>`:""}</div></div>
-          `).join("")}
+          ${data.legs.slice(0,6).map(l=>`<div class="leg"><div>${escapeHtml(l.who)}</div><div>${l.odds}${l.comp!=="—"?` <span style="color:#98a2b3">/ ${l.comp}</span>`:""}</div></div>`).join("")}
         </div>
       </div>
       <div class="sc-footer"><span class="sc-badge">Powered by CSU Predicts</span><span>· Not betting advice</span></div>
@@ -309,8 +242,7 @@ function renderShareCardDOM(data){
       <div class="sc-kpi"><div class="label">Expected value</div><div class="value">${data.kpis.pEV}</div></div>
       <div class="sc-kpi"><div class="label">Decimal · Profit</div><div class="value">${data.kpis.pDec} · ${data.kpis.pProfit}</div></div>
       <div class="sc-kpi"><div class="label">Confidence</div><div class="sc-meter"><div style="width:${(data.conf*100).toFixed(0)}%"></div></div><div style="margin-top:6px">${data.kpis.confPct}</div></div>
-    </div>`;
-  return el;
+    </div>`; return el;
 }
 async function generateShareImage(){
   const gen=$("#genImgBtn"), cpy=$("#copyImgBtn"), dl=$("#downloadImgBtn");
@@ -319,53 +251,25 @@ async function generateShareImage(){
     const data=buildShareData();
     const root=renderShareCardDOM(data);
     const canvas=await html2canvas(root,{backgroundColor:null, scale:2, logging:false});
-    await new Promise(res=>{
-      canvas.toBlob(b=>{
-        if(shareUrl) URL.revokeObjectURL(shareUrl);
-        shareBlob=b; shareUrl=URL.createObjectURL(b);
-        const img=$("#shareImg"); if(img){ img.src=shareUrl; img.style.display="block"; }
-        res();
-      },"image/png",0.96);
-    });
-  }finally{
-    if(cpy) cpy.disabled=!shareBlob;
-    if(dl)  dl.disabled=!shareBlob;
-    if(gen) gen.disabled=false;
-  }
+    await new Promise(res=>{ canvas.toBlob(b=>{ if(shareUrl) URL.revokeObjectURL(shareUrl); shareBlob=b; shareUrl=URL.createObjectURL(b); const img=$("#shareImg"); if(img){ img.src=shareUrl; img.style.display="block"; } res(); },"image/png",0.96); });
+  }finally{ if(cpy) cpy.disabled=!shareBlob; if(dl) dl.disabled=!shareBlob; if(gen) gen.disabled=false; }
 }
 async function copyShareImage(){
-  try{
-    if(!shareBlob) return;
-    if(navigator.clipboard && window.ClipboardItem){
-      await navigator.clipboard.write([ new ClipboardItem({ "image/png": shareBlob }) ]);
-      alert("Image copied to clipboard ✅");
-    }else alert("Clipboard image not supported here. Use Download instead.");
-  }catch(e){ alert("Copy failed: "+e.message); }
+  try{ if(!shareBlob) return; if(navigator.clipboard && window.ClipboardItem){ await navigator.clipboard.write([ new ClipboardItem({ "image/png": shareBlob }) ]); alert("Image copied to clipboard ✅"); } else alert("Clipboard image not supported here. Use Download instead."); }
+  catch(e){ alert("Copy failed: "+e.message); }
 }
-function downloadShareImage(){
-  if(!shareBlob) return;
-  const a=document.createElement("a"); a.href=shareUrl; a.download="crossslippro-share.png"; document.body.appendChild(a); a.click(); a.remove();
-}
+function downloadShareImage(){ if(!shareBlob) return; const a=document.createElement("a"); a.href=shareUrl; a.download="crossslippro-share.png"; document.body.appendChild(a); a.click(); a.remove(); }
 
-/* ---------- Mode + misc wiring ---------- */
-document.body.classList.add("simple");  // default to Simple view
+/* ---------- Mode + events ---------- */
+document.body.classList.add("simple"); // default Simple
 
-$("#simpleModeBtn")?.addEventListener("click", ()=>{
-  document.body.classList.add("simple");
-  $("#simpleModeBtn").classList.replace("ghost","primary");
-  $("#proModeBtn").classList.replace("primary","ghost");
-  scrollTo({top:0,behavior:"smooth"});
-});
-$("#proModeBtn")?.addEventListener("click", ()=>{
-  document.body.classList.remove("simple");
-  $("#simpleModeBtn").classList.replace("primary","ghost");
-  $("#proModeBtn").classList.replace("ghost","primary");
-});
+$("#simpleModeBtn")?.addEventListener("click", ()=>{ document.body.classList.add("simple"); $("#simpleModeBtn").classList.replace("ghost","primary"); $("#proModeBtn").classList.replace("primary","ghost"); scrollTo({top:0,behavior:"smooth"}); });
+$("#proModeBtn")?.addEventListener("click", ()=>{ document.body.classList.remove("simple"); $("#simpleModeBtn").classList.replace("primary","ghost"); $("#proModeBtn").classList.replace("ghost","primary"); });
 
-$("#book")   && $("#book").addEventListener("input",  e=>state.book=e.target.value);
-$("#league") && $("#league").addEventListener("input",e=>state.league=e.target.value);
-$("#market") && $("#market").addEventListener("input",e=>state.market=e.target.value);
-$("#title")  && $("#title").addEventListener("input", e=>state.title=e.target.value);
+$("#book")&&$("#book").addEventListener("input",e=>state.book=e.target.value);
+$("#league")&&$("#league").addEventListener("input",e=>state.league=e.target.value);
+$("#market")&&$("#market").addEventListener("input",e=>state.market=e.target.value);
+$("#title")&&$("#title").addEventListener("input",e=>state.title=e.target.value);
 
 $("#addTeam")?.addEventListener("click", ()=>{ state.teams.push(""); renderLists(); });
 $("#addOdds")?.addEventListener("click", ()=>{ state.odds.push("-110"); renderLists(); });
@@ -381,20 +285,14 @@ $("#copyImgBtn")?.addEventListener("click", ()=>copyShareImage());
 $("#downloadImgBtn")?.addEventListener("click", ()=>downloadShareImage());
 
 $("#settingsBtn")?.addEventListener("click", ()=>$("#settings").showModal());
-$("#saveSettings")?.addEventListener("click",(e)=>{
-  e.preventDefault();
-  const key=$("#oddsKey")?.value.trim()||"";
-  state.oddsKey=key; localStorage.setItem("CSP_ODDS_KEY", key);
-  $("#settings").close();
-});
+$("#saveSettings")?.addEventListener("click",(e)=>{ e.preventDefault(); const key=$("#oddsKey")?.value.trim()||""; state.oddsKey=key; localStorage.setItem("CSP_ODDS_KEY", key); $("#settings").close(); });
 
-$("#ppDate") && ($("#ppDate").textContent=new Date().toLocaleDateString());
 $("#year") && ($("#year").textContent=new Date().getFullYear());
 $("#navHome")?.addEventListener("click",(e)=>{ e.preventDefault(); scrollTo({top:0,behavior:"smooth"}); });
 
 function scrollToSummary(){ const el=$("#card-summary"); el && el.scrollIntoView({behavior:"smooth", block:"start"}); }
 
-/* ---------- Analyze button (robust path) ---------- */
+/* Analyze */
 $("#analyzeBtn")?.addEventListener("click", async ()=>{
   const out=$("#status");
   if(!state.files.length){ out.textContent="Choose an image first."; return; }
@@ -414,9 +312,9 @@ $("#analyzeBtn")?.addEventListener("click", async ()=>{
   }
 });
 
-/* ---------- Clear ---------- */
+/* Clear */
 $("#clearBtn")?.addEventListener("click", ()=>{
-  state.files=[]; if(thumbs) thumbs.innerHTML="";
+  state.files=[]; const t=$("#thumbs"); if(t) t.innerHTML="";
   state.text=""; state.teams=[]; state.odds=[]; state.competitor=[];
   $("#status").textContent=""; renderLists();
 });
