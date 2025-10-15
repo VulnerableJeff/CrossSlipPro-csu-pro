@@ -1,201 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="CrossSlipPro — AI-powered cross-sportsbook bet slip analyzer." />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CrossSlipPro — CSU Pro</title>
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- OCR + Canvas (must load BEFORE script.js) -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 </head>
 <body>
-
-  <!-- Header -->
-  <header class="site-header">
-    <div class="container row between">
-      <div class="brand">
-        <img src="assets/logo.png" alt="CrossSlipPro logo" class="logo" onerror="this.style.display='none'"/>
-        <span>CrossSlipPro <span class="muted">— CSU Pro</span></span>
-      </div>
+  <header class="site-header clean">
+    <div class="container header-row">
+      <a class="brand" href="#">
+        <img src="assets/logo.png" alt="CrossSlipPro" class="logo">
+        <span class="brand-text">CrossSlipPro <span class="brand-sub">CSU Pro</span></span>
+      </a>
       <nav class="nav">
-        <a href="#" id="navHome">Home</a>
-        <a href="#how">How it works</a>
-        <a href="#privacy">Privacy</a>
-        <button id="settingsBtn" class="ghost icon" title="Settings">⚙️</button>
-        <button id="modeBtn" class="ghost icon" title="Dark/Light">◐</button>
+        <a href="#" id="navHome" class="nav-link">Home</a>
+        <a href="#how" class="nav-link">How it works</a>
+        <a href="#privacy" class="nav-link">Privacy</a>
+        <div class="nav-sep"></div>
+        <button id="settingsBtn" class="nav-btn">⚙</button>
+        <button id="modeBtn" class="nav-btn">◐</button>
       </nav>
     </div>
   </header>
-
-  <!-- Intro -->
-  <section class="container">
-    <h2>AI-powered cross-sportsbook slip analyzer</h2>
-    <p class="muted">Upload screenshots from FanDuel, DraftKings, Hard Rock, BetMGM, and more. Analyze odds, EV, and confidence instantly.</p>
-  </section>
-
-  <!-- Main -->
   <main class="container">
-
-    <!-- Mode toggle -->
-    <div class="row between mb">
-      <div class="muted sm">Mode</div>
-      <div class="mode-toggle">
-        <button id="simpleModeBtn" class="primary small">Simple</button>
-        <button id="proModeBtn" class="ghost small">Pro</button>
-      </div>
-    </div>
-
-    <!-- Upload -->
-    <section class="card" id="card-upload">
-      <h3>Upload bet screenshot</h3>
-      <p class="muted sm">Drag & drop or choose a file. OCR runs in your browser.</p>
-      <div class="dropzone" id="drop">
-        <input type="file" id="file" accept="image/*" multiple hidden />
-        <button class="primary" id="pick">Choose images</button>
-        <div id="thumbs" class="thumbs"></div>
-      </div>
-      <div class="row gap mt">
-        <button class="primary" id="analyzeBtn">Analyze</button>
-        <button class="ghost" id="clearBtn">Clear</button>
-        <span id="status" class="muted"></span>
-      </div>
+    <h2>AI-powered cross-sportsbook slip analyzer</h2>
+    <p class="muted">Upload screenshots and get instant analysis.</p>
+    <section class="card">
+      <h3>Upload Bet Screenshot</h3>
+      <input type="file" id="file" accept="image/*" multiple>
+      <button id="analyzeBtn">Analyze</button>
+      <p id="status"></p>
+      <div id="result"></div>
     </section>
-
-    <!-- Summary -->
-    <section class="card" id="card-summary">
-      <h3>Summary</h3>
-
-      <div class="kpis">
-        <div class="kpi"><div class="kpi-label">Win chance</div><div id="pWin" class="kpi-value">—</div></div>
-        <div class="kpi"><div class="kpi-label">Expected value</div><div id="pEV" class="kpi-value">—</div></div>
-        <div class="kpi"><div class="kpi-label">Profit if win</div><div id="pProfit" class="kpi-value">—</div></div>
-      </div>
-
-      <div class="row gap mt">
-        <div class="grow">
-          <div class="bar"><div id="confBar"></div></div>
-          <div class="muted sm">Confidence: <span id="confPct">—</span></div>
-        </div>
-        <label class="stake-box">Stake ($)
-          <input id="stake" class="input" type="number" value="20" min="0" />
-        </label>
-      </div>
-
-      <ul id="insights" class="bullets mt"></ul>
-
-      <div class="row gap mt">
-        <button class="primary" id="shareBtn">Share link</button>
-        <input id="shareOut" class="input" readonly placeholder="Click Share link" onclick="this.select()" />
-        <button class="ghost" id="genImgBtn">Image</button>
-        <button class="ghost" id="copyImgBtn" disabled>Copy</button>
-        <button class="ghost" id="downloadImgBtn" disabled>Download</button>
-      </div>
-    </section>
-
-    <!-- Pro tools (hidden in Simple mode) -->
-    <section class="card advanced" id="card-edit">
-      <h3>Edit parsed slip</h3>
-
-      <details open>
-        <summary>Basics</summary>
-        <div class="grid cols-2 gap mt">
-          <label>Sportsbook <input id="book" class="input" placeholder="Unknown" /></label>
-          <label>League <input id="league" class="input" placeholder="NBA / NFL / MLB / etc." /></label>
-          <label>Market <input id="market" class="input" placeholder="Moneyline / Spread / Total / Prop" /></label>
-          <label>Title <input id="title" class="input" placeholder="Optional title" /></label>
-        </div>
-      </details>
-
-      <details>
-        <summary>Teams & odds</summary>
-        <div class="grid cols-3 mt gap">
-          <div>
-            <div class="row between"><span class="label">Teams</span><button class="chip" id="addTeam">+ Add</button></div>
-            <ul id="teams" class="list"></ul>
-          </div>
-          <div>
-            <div class="row between"><span class="label">Your odds</span><button class="chip" id="addOdds">+ Add</button></div>
-            <ul id="odds" class="list"></ul>
-          </div>
-          <div>
-            <div class="row between"><span class="label">Compare book</span><button class="chip" id="addComp">+ Add</button></div>
-            <ul id="competitor" class="list"></ul>
-            <p class="muted sm">Optional: paste a price per leg to compare.</p>
-          </div>
-        </div>
-      </details>
-    </section>
-
-    <section class="card advanced" id="card-market">
-      <h3>Live market (optional)</h3>
-      <p class="muted sm">Paste an API key in Settings to fetch The Odds API from your browser.</p>
-      <div class="grid cols-3 gap">
-        <label>Sport key <input id="sportKey" class="input" value="basketball_nba" /></label>
-        <label>Region <input id="region" class="input" value="us" /></label>
-        <label>Markets <input id="markets" class="input" value="h2h,spreads,totals" /></label>
-      </div>
-      <div class="row gap mt">
-        <button class="ghost" id="matchBtn">Match live game</button>
-        <span id="matchStatus" class="muted"></span>
-      </div>
-      <div id="marketOut" class="mt"></div>
-    </section>
-
-    <!-- Hidden render root for share image -->
-    <div id="shareCard" style="position:absolute;left:-99999px;top:-99999px;"></div>
-    <img id="shareImg" class="share-preview mt" style="display:none" />
-
-    <!-- Explainers -->
-    <section class="card" id="how">
-      <h3>How it works</h3>
-      <ul class="bullets">
-        <li>Upload screenshots; OCR runs in your browser (no upload).</li>
-        <li>We auto-detect teams and odds (edit in Pro mode if needed).</li>
-        <li>We compute implied probability, EV, Kelly, and confidence.</li>
-        <li>Optional live market via your own Odds API key.</li>
-        <li>Create a shareable link or branded image card.</li>
-      </ul>
-    </section>
-
-    <section class="card" id="privacy">
-      <h3>Privacy</h3>
-      <ul class="bullets">
-        <li>OCR & analysis happen locally in your browser.</li>
-        <li>Live market calls (if used) go directly to The Odds API with your key.</li>
-        <li>No accounts or sportsbook credentials. Not betting advice.</li>
-      </ul>
-    </section>
-
   </main>
-
-  <!-- Settings -->
-  <dialog id="settings">
-    <form method="dialog" class="card">
-      <h3>Settings</h3>
-      <label>Odds API key (optional)
-        <input id="oddsKey" class="input" placeholder="The Odds API key" />
-      </label>
-      <p class="muted sm">Stored locally in your browser only.</p>
-      <div class="row gap mt">
-        <button id="saveSettings" class="primary">Save</button>
-        <button value="cancel" class="ghost">Close</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Footer -->
   <footer class="site-footer">
-    <div class="container muted sm">
-      © <span id="year"></span> CrossSlipPro — Built by <b>VulnerableJeff</b> · Powered by CSU Predicts
-    </div>
+    <p>© 2025 CrossSlipPro — Built by VulnerableJeff</p>
   </footer>
-
-  <!-- App -->
   <script src="script.js"></script>
 </body>
 </html>
