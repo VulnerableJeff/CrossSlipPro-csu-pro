@@ -74,3 +74,26 @@ dialog .card { width: min(520px, 92vw); }
   .logo { height: 32px; }
   .brand { font-size: 18px; }
 }
+/* Minimal layout */
+.mb{margin-bottom:12px}
+.grow{flex:1}
+.small{font-size:12px;padding:8px 10px;border-radius:10px}
+.mode-toggle button{min-width:72px}
+#card-summary .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kpi{background:#12151a;border:1px solid var(--border);border-radius:12px;padding:12px}
+.kpi-label{color:var(--muted);font-size:12px}
+.kpi-value{font-size:22px;font-weight:700}
+.stake-box{display:flex;flex-direction:column;gap:6px;min-width:160px}
+
+.simple .advanced{display:none} /* hide Pro cards in Simple mode */
+.simple #card-edit details[open] > summary + * { margin-top:8px; }
+
+details{border:1px solid var(--border);border-radius:12px;padding:10px;background:#11151b}
+details > summary{cursor:pointer;font-weight:600;list-style:none}
+details > summary::-webkit-details-marker{display:none}
+
+/* Reduce visual noise on mobile */
+@media (max-width:900px){
+  #card-summary .kpis{grid-template-columns:1fr}
+  .stake-box{min-width:0}
+}
