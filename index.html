@@ -1,43 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="CrossSlipPro — AI-powered cross-sportsbook bet slip analyzer." />
   <title>CrossSlipPro — CSU Pro</title>
-  <link rel="stylesheet" href="style.css">
+
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- OCR library (main script loads workers/wasm via local-or-CDN fallback) -->
   <script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 </head>
 <body>
+  <!-- Header -->
   <header class="site-header clean">
     <div class="container header-row">
       <a class="brand" href="#">
-        <img src="assets/logo.png" alt="CrossSlipPro" class="logo">
+        <img src="assets/logo.png" alt="CrossSlipPro" class="logo" />
         <span class="brand-text">CrossSlipPro <span class="brand-sub">CSU Pro</span></span>
       </a>
       <nav class="nav">
-        <a href="#" id="navHome" class="nav-link">Home</a>
+        <a href="#" class="nav-link" id="navHome">Home</a>
         <a href="#how" class="nav-link">How it works</a>
         <a href="#privacy" class="nav-link">Privacy</a>
         <div class="nav-sep"></div>
-        <button id="settingsBtn" class="nav-btn">⚙</button>
-        <button id="modeBtn" class="nav-btn">◐</button>
+        <button id="modeBtn" class="nav-btn" title="Dark/Light">◐</button>
       </nav>
     </div>
   </header>
+
+  <!-- Intro -->
+  <section class="container intro">
+    <h1>AI-powered cross-sportsbook slip analyzer</h1>
+    <p class="muted">Upload screenshots from FanDuel, DraftKings, Hard Rock, BetMGM, and more. Analyze odds, EV, and confidence instantly.</p>
+  </section>
+
+  <!-- Main -->
   <main class="container">
-    <h2>AI-powered cross-sportsbook slip analyzer</h2>
-    <p class="muted">Upload screenshots and get instant analysis.</p>
-    <section class="card">
-      <h3>Upload Bet Screenshot</h3>
-      <input type="file" id="file" accept="image/*" multiple>
-      <button id="analyzeBtn">Analyze</button>
-      <p id="status"></p>
-      <div id="result"></div>
+
+    <!-- Mode toggle -->
+    <div class="row between mb">
+      <div class="muted sm">Mode</div>
+      <div class="mode-toggle">
+        <button id="simpleModeBtn" class="primary small">Simple</button>
+        <button id="proModeBtn" class="ghost small">Pro</button>
+      </div>
+    </div>
+
+    <!-- Upload card -->
+    <section class="card" id="card-upload">
+      <h3>Upload bet screenshot</h3>
+      <p class="muted sm">Drag & drop or choose a file. OCR runs in your browser.</p>
+
+      <div class="dropzone" id="drop">
+        <input type="file" id="file" accept="image/*" multiple hidden />
+        <button class="primary" id="pick">Choose images</button>
+        <div id="thumbs" class="thumbs"></div>
+      </div>
+
+      <div class="row gap mt">
+        <button class="primary" id="analyzeBtn">Analyze</button>
+        <button class="ghost" id="clearBtn">Clear</button>
+        <span id="status" class="muted"></span>
+      </div>
+
+      <div class="mt">
+        <details>
+          <summary>Paste text instead</summary>
+          <textarea id="pasteText" class="input" rows="6" placeholder="Paste slip text (teams & odds like +145 / -110)"></textarea>
+          <div class="row gap mt">
+            <button class="ghost" id="usePasted">Use pasted text</button>
+            <span class="muted sm">We’ll parse and analyze without OCR.</span>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section class="card fade" id="card-summary">
+      <h3>Summary</h3>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">Win chance</div><div id="pWin" class="kpi-value">—</div></div>
+        <div class="kpi"><div class="kpi-label">Expected value</div><div id="pEV" class="kpi-value">—</div></div>
+        <div class="kpi"><div class="kpi-label">Profit if win</div><div id="pProfit" class="kpi-value">—</div></div>
+      </div>
+      <div class="row gap mt">
+        <div class="grow">
+          <div class="bar"><div id="confBar"></div></div>
+          <div class="muted sm">Confidence: <span id="confPct">—</span></div>
+        </div>
+        <label class="stake-box">Stake ($)
+          <input id="stake" class="input" type="number" value="20" min="0" />
+        </label>
+      </div>
+      <ul id="insights" class="bullets mt"></ul>
+    </section>
+
+    <!-- Pro (hidden in Simple) -->
+    <section class="card advanced" id="card-edit">
+      <h3>Edit parsed slip</h3>
+      <details open>
+        <summary>Basics</summary>
+        <div class="grid cols-2 gap mt">
+          <label>Sportsbook <input id="book" class="input" placeholder="Unknown" /></label>
+          <label>League <input id="league" class="input" placeholder="NBA / NFL / MLB / etc." /></label>
+          <label>Market <input id="market" class="input" placeholder="Moneyline / Spread / Total / Prop" /></label>
+          <label>Title <input id="title" class="input" placeholder="Optional title" /></label>
+        </div>
+      </details>
+      <details>
+        <summary>Teams & odds</summary>
+        <div class="grid cols-3 mt gap">
+          <div>
+            <div class="row between"><span class="label">Teams</span><button class="chip" id="addTeam">+ Add</button></div>
+            <ul id="teams" class="list"></ul>
+          </div>
+          <div>
+            <div class="row between"><span class="label">Your odds</span><button class="chip" id="addOdds">+ Add</button></div>
+            <ul id="odds" class="list"></ul>
+          </div>
+          <div>
+            <div class="row between"><span class="label">Compare book</span><button class="chip" id="addComp">+ Add</button></div>
+            <ul id="competitor" class="list"></ul>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- Info -->
+    <section class="card" id="how">
+      <h3>How it works</h3>
+      <ul class="bullets">
+        <li>OCR & analysis happen locally in your browser.</li>
+        <li>Edit teams/odds in Pro mode if OCR misses anything.</li>
+        <li>We compute probability, EV, Kelly, and a confidence score.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="privacy">
+      <h3>Privacy</h3>
+      <ul class="bullets">
+        <li>No accounts or sportsbook credentials required.</li>
+        <li>No server-side storage; everything runs client-side.</li>
+      </ul>
     </section>
   </main>
+
   <footer class="site-footer">
-    <p>© 2025 CrossSlipPro — Built by VulnerableJeff</p>
+    <div class="container muted sm">
+      © <span id="year"></span> CrossSlipPro — Built by <b>VulnerableJeff</b>
+    </div>
   </footer>
+
   <script src="script.js"></script>
 </body>
 </html>
