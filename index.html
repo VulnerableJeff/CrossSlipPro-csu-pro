@@ -36,81 +36,114 @@
   <!-- ===== MAIN APP ===== -->
   <main class="container">
 
-    <div class="card center" id="drop">
-      <h3>Upload Bet Screenshot</h3>
-      <p class="muted sm">Drop one or more sportsbook screenshots (FanDuel, DraftKings, Hard Rock, etc.). OCR runs in your browser.</p>
-      <button id="pick" class="primary">Choose images</button>
-      <input type="file" id="file" multiple hidden accept="image/*" />
+  <!-- Top bar: Simple / Pro toggle -->
+  <div class="row between mb">
+    <div class="muted sm">Mode</div>
+    <div class="mode-toggle">
+      <button id="simpleModeBtn" class="primary small">Simple</button>
+      <button id="proModeBtn" class="ghost small">Pro</button>
+    </div>
+  </div>
+
+  <!-- 1) Upload -->
+  <section class="card" id="card-upload">
+    <h3>Upload bet screenshot</h3>
+    <p class="muted sm">Drag & drop or choose a file. OCR runs in your browser.</p>
+    <div class="dropzone" id="drop">
+      <input type="file" id="file" accept="image/*" multiple hidden />
+      <button class="primary" id="pick">Choose images</button>
       <div id="thumbs" class="thumbs"></div>
-      <div class="mt"><button id="analyzeBtn" class="primary">Analyze Slip</button> <button id="clearBtn" class="ghost">Clear</button></div>
-      <div id="status" class="muted mt-sm"></div>
+    </div>
+    <div class="row gap mt">
+      <button class="primary" id="analyzeBtn">Analyze</button>
+      <button class="ghost" id="clearBtn">Clear</button>
+      <span id="status" class="muted"></span>
+    </div>
+  </section>
+
+  <!-- 2) Summary (minimal) -->
+  <section class="card" id="card-summary">
+    <h3>Summary</h3>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">Win chance</div><div id="pWin" class="kpi-value">—</div></div>
+      <div class="kpi"><div class="kpi-label">Expected value</div><div id="pEV" class="kpi-value">—</div></div>
+      <div class="kpi"><div class="kpi-label">Profit if win</div><div id="pProfit" class="kpi-value">—</div></div>
     </div>
 
-    <div class="card">
-      <h3>Parsed Slip (edit freely)</h3>
-
-      <label>Sportsbook</label>
-      <input id="book" class="input" placeholder="Unknown" />
-
-      <label>League</label>
-      <input id="league" class="input" placeholder="NBA / NFL / MLB / etc." />
-
-      <label>Market</label>
-      <input id="market" class="input" placeholder="Moneyline / Spread / Total / Prop" />
-
-      <label>Title</label>
-      <input id="title" class="input" placeholder="Optional custom title" />
-
-      <h4>Teams / Players</h4>
-      <ul id="teams" class="list"></ul>
-      <button id="addTeam" class="ghost small">+ Add</button>
-
-      <h4>Your Odds</h4>
-      <ul id="odds" class="list"></ul>
-      <button id="addOdds" class="ghost small">+ Add</button>
-
-      <h4>Compare (other book)</h4>
-      <ul id="competitor" class="list"></ul>
-      <button id="addComp" class="ghost small">+ Add</button>
-
-      <label>Stake</label>
-      <input id="stake" class="input" type="number" min="0" placeholder="Enter stake amount" />
+    <div class="row gap mt">
+      <div class="grow">
+        <div class="bar"><div id="confBar"></div></div>
+        <div class="muted sm">Confidence: <span id="confPct">—</span></div>
+      </div>
+      <label class="stake-box">Stake ($)
+        <input id="stake" class="input" type="number" value="20" min="0" />
+      </label>
     </div>
 
-    <div class="card">
-      <h3>Analysis Results</h3>
-      <div class="grid cols-2 gap">
-        <div><b>Parlay Win Chance</b><div id="pWin">—</div></div>
-        <div><b>Decimal Odds</b><div id="pDec">—</div></div>
-        <div><b>Potential Profit</b><div id="pProfit">—</div></div>
-        <div><b>Expected Value</b><div id="pEV">—</div></div>
-        <div><b>Half-Kelly Stake</b><input id="kellyHalf" readonly class="input" /></div>
-        <div><b>Confidence</b>
-          <div class="bar"><div id="confBar"></div></div>
-          <div id="confPct" class="muted sm">—</div>
+    <ul id="insights" class="bullets mt"></ul>
+
+    <div class="row gap mt">
+      <button class="primary" id="shareBtn">Share link</button>
+      <input id="shareOut" class="input" readonly placeholder="Click Share link" onclick="this.select()" />
+      <button class="ghost" id="genImgBtn">Image</button>
+      <button class="ghost" id="copyImgBtn" disabled>Copy</button>
+      <button class="ghost" id="downloadImgBtn" disabled>Download</button>
+    </div>
+  </section>
+
+  <!-- Pro tools (hidden in Simple mode) -->
+  <section class="card advanced" id="card-edit">
+    <h3>Edit parsed slip</h3>
+
+    <details open>
+      <summary>Basics</summary>
+      <div class="grid cols-2 gap mt">
+        <label>Sportsbook <input id="book" class="input" placeholder="Unknown" /></label>
+        <label>League <input id="league" class="input" placeholder="NBA / NFL / MLB / etc." /></label>
+        <label>Market <input id="market" class="input" placeholder="Moneyline / Spread / Total / Prop" /></label>
+        <label>Title <input id="title" class="input" placeholder="Optional title" /></label>
+      </div>
+    </details>
+
+    <details>
+      <summary>Teams & odds</summary>
+      <div class="grid cols-3 mt gap">
+        <div>
+          <div class="row between"><span class="label">Teams</span><button class="chip" id="addTeam">+ Add</button></div>
+          <ul id="teams" class="list"></ul>
+        </div>
+        <div>
+          <div class="row between"><span class="label">Your odds</span><button class="chip" id="addOdds">+ Add</button></div>
+          <ul id="odds" class="list"></ul>
+        </div>
+        <div>
+          <div class="row between"><span class="label">Compare book</span><button class="chip" id="addComp">+ Add</button></div>
+          <ul id="competitor" class="list"></ul>
+          <p class="muted sm">Optional: paste a price to compare per leg.</p>
         </div>
       </div>
+    </details>
+  </section>
 
-      <h4>Insights</h4>
-      <ul id="insights"></ul>
+  <section class="card advanced" id="card-market">
+    <h3>Live market (optional)</h3>
+    <p class="muted sm">Paste an API key in Settings to fetch The Odds API from your browser.</p>
+    <div class="grid cols-3 gap">
+      <label>Sport key <input id="sportKey" class="input" value="basketball_nba" /></label>
+      <label>Region <input id="region" class="input" value="us" /></label>
+      <label>Markets <input id="markets" class="input" value="h2h,spreads,totals" /></label>
     </div>
-
-    <div class="card">
-      <h3>Share & Export</h3>
-      <button id="shareBtn" class="primary">Generate Share Link</button>
-      <input id="shareOut" class="input mt-sm" readonly />
-
-      <div class="mt">
-        <button id="genImgBtn" class="ghost">Generate Share Image</button>
-        <button id="copyImgBtn" class="ghost" disabled>Copy</button>
-        <button id="downloadImgBtn" class="ghost" disabled>Download</button>
-      </div>
-
-      <div id="shareCard" class="share-preview mt"></div>
-      <img id="shareImg" class="share-preview mt" />
+    <div class="row gap mt">
+      <button class="ghost" id="matchBtn">Match live game</button>
+      <span id="matchStatus" class="muted"></span>
     </div>
+    <div id="marketOut" class="mt"></div>
+  </section>
 
-  </main>
+  <!-- hidden render root for share image -->
+  <div id="shareCard" style="position:absolute;left:-99999px;top:-99999px;"></div>
+  <img id="shareImg" class="share-preview mt" style="display:none" />
+                         </main>
 
   <!-- ===== SETTINGS DIALOG ===== -->
   <dialog id="settings">
