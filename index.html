@@ -2,32 +2,182 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CrossSlipPro — CSU Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CrossSlipPro — AI Slip Analyzer</title>
+  <meta name="description" content="Upload sportsbook screenshots, auto-parse teams/odds, get EV/Kelly and market comparison, then share." />
   <link rel="stylesheet" href="style.css" />
+  <!-- Tesseract.js OCR -->
+  <script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>CrossSlipPro — CSU Pro</h1>
-    <p>AI-powered cross-sportsbook slip analyzer</p>
+  <header class="site-header">
+    <div class="container row between">
+      <div class="brand">
+        <img src="favicon.png" alt="CrossSlipPro" class="logo" />
+        <span>CrossSlipPro — CSU Pro</span>
+      </div>
+      <nav class="nav">
+        <a href="#" id="navHome">Home</a>
+        <a href="#how">How it works</a>
+        <a href="#privacy">Privacy</a>
+        <button id="modeBtn" class="ghost">Dark/Light</button>
+        <button id="settingsBtn" class="ghost">Settings</button>
+      </nav>
+    </div>
+    <div class="container">
+      <span class="badge">Powered by CSU Predicts</span>
+    </div>
   </header>
 
-  <main>
-    <section class="upload-section">
+  <main class="container">
+    <!-- Uploader -->
+    <section class="card" id="uploader">
       <h2>Upload Bet Screenshot</h2>
-      <input type="file" id="upload" accept="image/*" />
-      <button id="analyze">Analyze Slip</button>
+      <p class="muted">Drop one or more sportsbook screenshots (FanDuel, DraftKings, Hard Rock, BetMGM, etc.). OCR runs <b>in your browser</b>.</p>
+
+      <div class="dropzone" id="drop">
+        <input type="file" id="file" accept="image/*" multiple hidden />
+        <button class="primary" id="pick">Choose images</button>
+        <p class="muted sm">or drag & drop</p>
+        <div id="thumbs" class="thumbs"></div>
+      </div>
+
+      <div class="row gap">
+        <button class="primary" id="analyzeBtn">Analyze</button>
+        <button class="ghost" id="clearBtn">Clear</button>
+        <span id="status" class="muted"></span>
+      </div>
     </section>
 
-    <section id="results" class="results">
-      <h2>Analysis Results</h2>
-      <p id="summary">Upload a screenshot to begin.</p>
+    <!-- Parsed / Editable + Insights -->
+    <section class="grid">
+      <div class="card">
+        <h3>Parsed slip (edit freely)</h3>
+        <div class="grid cols-2 gap">
+          <label>Sportsbook <input id="book" class="input" placeholder="Unknown" /></label>
+          <label>League <input id="league" class="input" placeholder="NBA / NFL / MLB / NHL / NCAAB" /></label>
+          <label>Market <input id="market" class="input" placeholder="Moneyline / Spread / Total / Prop" /></label>
+          <label>Title <input id="title" class="input" placeholder="Optional nice title" /></label>
+        </div>
+
+        <div class="grid cols-3 mt gap">
+          <div>
+            <div class="row between">
+              <span class="label">Teams/Players</span>
+              <button class="chip" id="addTeam">+ Add</button>
+            </div>
+            <ul id="teams" class="list"></ul>
+          </div>
+          <div>
+            <div class="row between">
+              <span class="label">Your Odds</span>
+              <button class="chip" id="addOdds">+ Add</button>
+            </div>
+            <ul id="odds" class="list"></ul>
+          </div>
+          <div>
+            <div class="row between">
+              <span class="label">Compare (other book)</span>
+              <button class="chip" id="addComp">+ Add</button>
+            </div>
+            <ul id="competitor" class="list"></ul>
+            <p class="muted sm">Paste another book’s price per leg to compare (optional).</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>AI Insights</h3>
+        <div class="meter"><div id="confBar" class="meter-bar"></div></div>
+        <p class="muted sm"><b>Confidence:</b> <span id="confPct">—</span></p>
+        <ul id="insights" class="bullets"></ul>
+        <div class="grid cols-2 mt gap">
+          <label>Stake ($) <input id="stake" class="input" type="number" value="20" /></label>
+          <label>Kelly fraction (½ shown) <input id="kellyHalf" class="input" disabled placeholder="Auto" /></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Market lookup (live match) -->
+    <section class="card">
+      <h3>Live Match & Market Lookup (optional)</h3>
+      <p class="muted sm">Uses <a class="link" href="https://the-odds-api.com/" target="_blank">The Odds API</a> if you paste your API key in <b>Settings</b>. We only call it from your browser.</p>
+      <div class="grid cols-3 gap">
+        <label>Sport key <input id="sportKey" class="input" value="basketball_nba" /></label>
+        <label>Region <input id="region" class="input" value="us" /></label>
+        <label>Markets <input id="markets" class="input" value="h2h,spreads,totals" /></label>
+      </div>
+      <div class="row gap mt">
+        <button class="primary" id="matchBtn">Match live game</button>
+        <span id="matchStatus" class="muted"></span>
+      </div>
+      <div id="marketOut" class="mt"></div>
+    </section>
+
+    <!-- Totals / Share -->
+    <section class="grid">
+      <div class="card">
+        <h3>Totals</h3>
+        <div class="grid cols-2 gap">
+          <div class="muted">Parlay win chance</div> <div id="pWin" class="right strong">—</div>
+          <div className="muted">Parlay decimal</div> <div id="pDec" class="right">—</div>
+          <div class="muted">Profit if win</div> <div id="pProfit" class="right">—</div>
+          <div class="muted">Expected value (EV)</div> <div id="pEV" class="right">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Share</h3>
+        <div class="row gap">
+          <button class="primary" id="shareBtn">Generate share link</button>
+          <input id="shareOut" class="input" readonly onclick="this.select()" />
+        </div>
+        <p class="muted sm">Hash links keep your slip fully client-side. Nothing is uploaded.</p>
+      </div>
+    </section>
+
+    <section class="card" id="how">
+      <h3>How it works</h3>
+      <ul class="bullets">
+        <li>Upload screenshots; OCR runs on-device via Tesseract.js.</li>
+        <li>We auto-detect book, league, market, teams & odds (edit anytime).</li>
+        <li>We compute implied probability, devig, EV, Kelly — with insights.</li>
+        <li>Optional: fetch live market to compare lines.</li>
+        <li>Share a link that encodes the slip in the URL hash.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="privacy">
+      <h3>Privacy Policy</h3>
+      <p class="muted sm"><b>Last updated:</b> <span id="ppDate"></span></p>
+      <ul class="bullets">
+        <li><b>OCR on-device:</b> images never leave your browser.</li>
+        <li><b>Live markets:</b> if used, requests go from your browser directly to The Odds API using your key.</li>
+        <li>No accounts, no payments, no sportsbook credentials.</li>
+      </ul>
     </section>
   </main>
 
-  <footer>
-    <p>© 2025 CrossSlipPro — Built by VulnerableJeff</p>
+  <footer class="site-footer">
+    <div class="container muted sm">
+      © <span id="year"></span> CrossSlipPro · Experimental OCR · Not betting advice · <a href="#privacy">Privacy Policy</a>
+    </div>
   </footer>
+
+  <!-- Settings modal -->
+  <dialog id="settings">
+    <form method="dialog" class="card">
+      <h3>Settings</h3>
+      <label>Odds API key (optional)
+        <input id="oddsKey" class="input" placeholder="paste your The Odds API key" />
+      </label>
+      <p class="muted sm">Stored in your browser (localStorage). We never see it.</p>
+      <div class="row gap mt">
+        <button value="cancel" class="ghost">Close</button>
+        <button id="saveSettings" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="script.js"></script>
 </body>
