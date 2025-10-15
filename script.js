@@ -1,10 +1,6 @@
-// --- helpers ---
 const $ = s => document.querySelector(s);
-const pct = x => `${(Math.max(0,Math.min(1,x))*100).toFixed(1)}%`;
-const currency = x => Number.isFinite(+x) ? `$${(+x).toFixed(2)}` : "—";
 const product = arr => arr.reduce((a,b)=>a*b, arr.length?1:0);
 
-// --- odds math ---
 function americanToImplied(n){
   n = Number(String(n).replace(/\s+/g,""));
   if(!Number.isFinite(n) || n===0) return null;
@@ -13,175 +9,110 @@ function americanToImplied(n){
   const decimal = n>0 ? 1 + A/100 : 1 + 100/A;
   return {american:n, implied, decimal};
 }
-function devigTwoWay(a,b){
-  const A = americanToImplied(a), B = americanToImplied(b);
-  if(!A||!B) return null; const s=A.implied+B.implied; if(s<=0) return null;
-  return {pA:A.implied/s, pB:B.implied/s};
-}
-function kelly(p, dec){ const b=dec-1, q=1-p; if(b<=0) return 0; return Math.max(0,Math.min(1,(b*p - q)/b)); }
-
-// --- state ---
-const S = { files:[], text:"", odds:[], teams:[], competitor:[] };
-
-// --- parsing ---
 function parseSlipText(text){
   const odds = Array.from(new Set((text.match(/[+\-]\s?\d{2,4}/g)||[]).map(s=>s.replace(/\s+/g,"")))).slice(0,12);
   const teams = Array.from(new Set((text.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\b/g)||[]))).slice(0,odds.length);
   return { odds, teams };
 }
 
-// --- OCR source sets: local, jsDelivr, unpkg ---
-const SOURCES = [
-  {
-    name:"local",
-    corePath:"./vendor/tesseract/tesseract-core.wasm.js",
-    workerPath:"./vendor/tesseract/worker.min.js",
-    langPath:"./vendor/tesseract/lang-data"
-  },
-  {
-    name:"jsdelivr",
-    corePath:"https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/dist/tesseract-core.wasm.js",
-    workerPath:"https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/worker.min.js",
-    langPath:"https://tessdata.projectnaptha.com/5"
-  },
-  {
-    name:"unpkg",
-    corePath:"https://unpkg.com/tesseract.js-core@5.0.0/dist/tesseract-core.wasm.js",
-    workerPath:"https://unpkg.com/tesseract.js@5.1.0/dist/worker.min.js",
-    langPath:"https://tessdata.projectnaptha.com/5"
-  }
+const SOURCES=[
+  {name:"local", corePath:"./vendor/tesseract/tesseract-core.wasm.js", workerPath:"./vendor/tesseract/worker.min.js", langPath:"./vendor/tesseract/lang-data"},
+  {name:"cdnjs", corePath:"https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract-core.wasm.js", workerPath:"https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/worker.min.js", langPath:"https://raw.githubusercontent.com/naptha/tessdata/main/4.0.0_best"},
+  {name:"jsdelivr", corePath:"https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.0/tesseract-core.wasm.js", workerPath:"https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/worker.min.js", langPath:"https://tessdata.projectnaptha.com/5"},
+  {name:"unpkg", corePath:"https://unpkg.com/tesseract.js-core@5.1.0/tesseract-core.wasm.js", workerPath:"https://unpkg.com/tesseract.js@5.1.0/dist/worker.min.js", langPath:"https://tessdata.projectnaptha.com/5"}
 ];
 
 async function headOK(url){
-  try { const r = await fetch(url, {method:"HEAD", cache:"no-store"}); return r.ok; }
-  catch { return false; }
+  try{ const r=await fetch(url,{method:"HEAD",cache:"no-store"}); return r.ok; }catch{ return false; }
 }
-
-async function selectTesseract(){
-  for (const src of SOURCES){
-    const okWorker = await headOK(src.workerPath);
-    const okCore   = await headOK(src.corePath);
-    const okLang   = await headOK(`${src.langPath}/eng.traineddata.gz`);
-    if (okWorker && okCore && okLang) return src;
+async function chooseSource(){
+  for(const s of SOURCES){
+    const okW = await headOK(s.workerPath);
+    const okC = await headOK(s.corePath);
+    const okL = await headOK(`${s.langPath}/eng.traineddata.gz`);
+    if(okW && okC && okL) return s;
   }
-  // If all head checks fail, still return jsDelivr and let runtime attempt (some CDNs block HEAD)
   return SOURCES[1];
 }
 
+function showLoader(on=true){
+  const el=$("#loader");
+  if(!el) return;
+  if(on){ el.classList.remove("hidden"); el.setAttribute("aria-hidden","false"); }
+  else  { el.classList.add("hidden"); el.setAttribute("aria-hidden","true"); }
+}
+
 async function runOCR(files){
-  const status = $("#status"), diag=$("#diag");
-  status.textContent = "Running OCR…";
-  diag.classList.add("hidden");
-
-  const src = await selectTesseract();
-  if (src.name !== "local"){
+  const status=$("#status"), diag=$("#diag");
+  status.textContent="Running OCR…"; showLoader(true); diag.classList.add("hidden");
+  const src = await chooseSource();
+  if(src.name!=="local"){
     diag.classList.remove("hidden");
-    diag.innerHTML = `Using <b>${src.name}</b> CDN for OCR (local files not found).`;
+    diag.innerHTML=`Using <b>${src.name}</b> (local files not found).`;
   }
-
-  const opts = {
-    corePath:  src.corePath,
-    workerPath:src.workerPath,
-    langPath:  src.langPath,
-    logger: m => console.debug("[tesseract]", m)
-  };
-
-  const chunks = [];
+  const opts={ corePath:src.corePath, workerPath:src.workerPath, langPath:src.langPath, logger:m=>console.debug("[tesseract]",m) };
+  const chunks=[];
   try{
-    for(const f of files){
-      const { data } = await Tesseract.recognize(f, "eng", opts);
-      chunks.push(data.text || "");
-    }
-  }catch(err){
-    console.error("OCR failed:", err);
-    status.textContent = "OCR failed. Use “Paste text instead”.";
-    throw err;
-  }
-
-  status.textContent = "OCR complete.";
+    for(const f of files){ const {data}=await Tesseract.recognize(f,"eng",opts); chunks.push(data.text||""); }
+  }catch(e){ console.error(e); status.textContent="OCR failed. Use “Paste text instead”."; showLoader(false); throw e; }
+  status.textContent="OCR complete."; showLoader(false);
   return chunks.join("\\n---\\n");
 }
 
-// --- analysis ---
-function analyze(){
-  const stake = Number($("#stake")?.value || 20);
-  const legs = S.odds.map((o,i)=>{
-    const you = americanToImplied(o);
-    if(!you) return null;
-    const comp = S.competitor[i] ? Number(S.competitor[i]) : null;
-    let fair=null, edge=null;
-    if(Number.isFinite(comp)){ const dv=devigTwoWay(Number(o),comp); if(dv){ fair=dv.pA; edge=fair-you.implied; } }
-    return { who:S.teams[i] || `Leg ${i+1}`, ...you, fair, edge };
-  }).filter(Boolean);
-
-  const probs = legs.map(l => (l.fair ?? l.implied)).filter(Boolean);
-  const p = product(probs) || 0;
+function analyze(text){
+  const stake = Number($("#stake").value || 20);
+  const parsed = parseSlipText(text||"");
+  const legs = parsed.odds.map(o=>americanToImplied(o)).filter(Boolean);
+  const probs = legs.map(l=>l.implied);
+  const p = product(probs)||0;
   const dec = legs.reduce((a,l)=>a*(l.decimal||1),1);
   const profit = stake*(dec-1);
   const ev = p*profit - (1-p)*stake;
 
-  $("#kWin").textContent   = pct(p);
-  $("#kProfit").textContent= currency(profit);
-  $("#kEV").textContent    = currency(ev);
+  $("#kWin").textContent = `${(p*100).toFixed(1)}%`;
+  $("#kProfit").textContent = Number.isFinite(profit)?`$${profit.toFixed(2)}`:"—";
+  $("#kEV").textContent = Number.isFinite(ev)?`$${ev.toFixed(2)}`:"—";
+  const conf = Math.min(1, Math.max(0, p*0.8)); $("#conf").textContent = `${(conf*100).toFixed(1)}%`; $("#bar").style.width = `${conf*100}%`;
 
-  let conf = Math.min(1, Math.max(0, p*0.7 + Math.min(0.3, legs.filter(l=>l.edge>0).length*0.05)));
-  $("#conf").textContent = pct(conf);
-  $("#bar").style.width = `${conf*100}%`;
+  const insights=[];
+  if(dec>=2 && p<0.5) insights.push("Long odds with sub-50% chance — consider smaller stake.");
+  insights.push(ev>=0?`Positive EV overall: +$${ev.toFixed(2)}`:`Negative EV overall: -$${Math.abs(ev).toFixed(2)}`);
+  $("#insights").innerHTML = insights.map(t=>`<li>${t}</li>`).join("");
 
-  const tips=[];
-  legs.forEach(l=>{
-    if(l.edge!==null){
-      if(l.edge>0.03) tips.push(`Value on ${l.who}: ${(l.edge*100).toFixed(1)}% ✅`);
-      else if(l.edge<-0.03) tips.push(`Weak price on ${l.who}: ${(l.edge*100).toFixed(1)}% ❌`);
-    }
-  });
-  if(dec>=2 && p<0.5) tips.push("Long odds with sub-50% win chance — consider smaller stake.");
-  tips.push(ev>=0 ? `Positive EV overall: +${currency(ev)} on ${currency(stake)}` : `Negative EV overall: -${currency(Math.abs(ev))} — price shop or trim legs.`);
-  $("#insights").innerHTML = tips.slice(0,4).map(t=>`<li>${t}</li>`).join("");
-
-  $("#resultCard").hidden = false;
-  $("#resultCard").scrollIntoView({behavior:"smooth", block:"start"});
+  $("#resultCard").hidden=false;
+  $("#resultCard").scrollIntoView({behavior:"smooth"});
 }
 
-// --- file handling & actions ---
-const drop = $("#drop"), picker = $("#file"), pickBtn = $("#pick"), thumbs = $("#thumbs");
+// File handling
+const drop=$("#drop"), picker=$("#file"), pickBtn=$("#pick"), thumbs=$("#thumbs");
 pickBtn.addEventListener("click", ()=>picker.click());
-picker.addEventListener("change", e => handleFiles(e.target.files));
+picker.addEventListener("change", e=>handleFiles(e.target.files));
 drop.addEventListener("dragover", e=>{e.preventDefault();});
 drop.addEventListener("drop", e=>{e.preventDefault(); handleFiles(e.dataTransfer.files);});
-
 function handleFiles(list){
-  S.files = Array.from(list||[]);
-  thumbs.innerHTML = "";
-  S.files.forEach(f => { const url=URL.createObjectURL(f); const img=document.createElement("img"); img.src=url; thumbs.appendChild(img); });
+  const files=Array.from(list||[]); window._files=files; thumbs.innerHTML="";
+  files.forEach(f=>{ const url=URL.createObjectURL(f); const img=document.createElement("img"); img.src=url; thumbs.appendChild(img); });
 }
 
+// Buttons
 $("#analyze").addEventListener("click", async ()=>{
-  const status=$("#status");
-  if(!S.files.length){ status.textContent="Choose an image first."; return; }
+  const status=$("#status"); const files=window._files||[];
+  if(!files.length){ status.textContent="Choose an image first."; return; }
   try{
-    const text = await runOCR(S.files);
-    const parsed = parseSlipText(text);
-    S.text=text; S.odds=parsed.odds; S.teams=parsed.teams;
-    if(!S.odds.length){ status.textContent="OCR finished but no odds found. Paste manually."; return; }
-    status.textContent="Done ✔"; analyze();
-  }catch(_e){ /* message already shown */ }
+    const text=await runOCR(files);
+    window._recognizedText=text; status.textContent="Done ✔";
+    analyze(text);
+  }catch(_e){}
 });
-
 $("#usePasted").addEventListener("click", e=>{
   e.preventDefault();
-  const txt = ($("#pasteText").value||"").trim();
-  const status=$("#status");
-  if(!txt){ status.textContent="Paste text first."; return; }
-  const parsed = parseSlipText(txt);
-  S.text=txt; S.odds=parsed.odds; S.teams=parsed.teams;
-  if(!S.odds.length){ status.textContent="No odds detected. Include +145 / -110 etc."; return; }
-  status.textContent="Parsed ✔"; analyze();
+  const txt=($("#pasteText").value||"").trim();
+  const status=$("#status"); if(!txt){ status.textContent="Paste text first."; return; }
+  window._recognizedText=txt; status.textContent="Parsed ✔"; analyze(txt);
 });
-
 $("#clear").addEventListener("click", ()=>{
-  S.files=[]; S.text=""; S.odds=[]; S.teams=[]; S.competitor=[];
   thumbs.innerHTML=""; $("#status").textContent=""; $("#resultCard").hidden=true;
+  window._files=[]; window._recognizedText="";
 });
 
 $("#year").textContent = new Date().getFullYear();

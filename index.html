@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CrossSlipPro — CSU Pro</title>
+  <meta name="description" content="AI-powered cross-sportsbook bet slip analyzer." />
   <link rel="stylesheet" href="style.css" />
-  <!-- Core Tesseract bundle (workers/wasm chosen dynamically in script.js) -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js"></script>
 </head>
 <body>
   <header class="site-header">
@@ -25,7 +25,7 @@
   <main class="wrap">
     <section class="hero">
       <h1>AI-powered cross-sportsbook slip analyzer</h1>
-      <p class="muted">Upload a bet screenshot. We read teams & odds and estimate win chance, EV, and confidence.</p>
+      <p class="muted">Upload a screenshot. We estimate win chance, EV, and confidence. All in your browser.</p>
     </section>
 
     <section class="card">
@@ -46,7 +46,7 @@
         <textarea id="pasteText" class="input" rows="5" placeholder="Paste slip text (teams & odds like +145 / -110)"></textarea>
         <div class="row gap mt">
           <button id="usePasted" class="btn ghost">Analyze pasted text</button>
-          <small class="muted">Use when OCR can’t read your screenshot.</small>
+          <small class="muted">Use if OCR can’t read your screenshot.</small>
         </div>
       </details>
 
@@ -77,8 +77,8 @@
     <section id="how" class="card">
       <h2>How it works</h2>
       <ul class="bullets">
-        <li>OCR runs locally in your browser using WebAssembly.</li>
-        <li>If OCR misses something, use “Paste text instead”.</li>
+        <li>OCR runs locally in your browser via WebAssembly.</li>
+        <li>If OCR misses anything, use “Paste text instead”.</li>
         <li>We compute probability, EV and a confidence score.</li>
       </ul>
     </section>
@@ -95,6 +95,11 @@
   <footer class="site-footer">
     <div class="wrap muted sm">© <span id="year"></span> CrossSlipPro — Built by <b>VulnerableJeff</b></div>
   </footer>
+
+  <div id="loader" class="loader hidden" aria-hidden="true">
+    <div class="spinner"></div>
+    <div class="loader-text">Analyzing…</div>
+  </div>
 
   <script src="script.js"></script>
 </body>
