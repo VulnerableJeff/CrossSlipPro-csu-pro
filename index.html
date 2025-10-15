@@ -46,6 +46,20 @@
   </div>
 
   <!-- 1) Upload -->
+    <section id="card-upload">
+  <div id="drop">
+    <input type="file" id="file" accept="image/*" multiple hidden />
+    <button id="pick">Choose images</button>
+    <div id="thumbs"></div>
+  </div>
+
+  <div>
+    <button id="analyzeBtn">Analyze</button>
+    <button id="clearBtn">Clear</button>
+    <span id="status"></span>
+  </div>
+    </section>
+    
   <section class="card" id="card-upload">
     <h3>Upload bet screenshot</h3>
     <p class="muted sm">Drag & drop or choose a file. OCR runs in your browser.</p>
