@@ -2,182 +2,213 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="CrossSlipPro — AI-powered cross-sportsbook bet slip analyzer." />
   <title>CrossSlipPro — CSU Pro</title>
+
+  <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
+
+  <!-- OCR + canvas (must load BEFORE script.js) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 
-  <!-- ===== HEADER ===== -->
-  <header class="header">
-    <div class="logo-wrap">
-      <img src="assets/logo.png" alt="CrossSlipPro logo" class="logo" onerror="this.style.display='none'" />
-      <h1 class="brand">CrossSlipPro <span class="muted">— CSU Pro</span></h1>
+  <!-- ===== Header ===== -->
+  <header class="site-header">
+    <div class="container row between">
+      <div class="brand">
+        <img src="assets/logo.png" alt="CrossSlipPro logo" class="logo" onerror="this.style.display='none'"/>
+        <span>CrossSlipPro <span class="muted">— CSU Pro</span></span>
+      </div>
+      <nav class="nav">
+        <a href="#" id="navHome" title="Home">Home</a>
+        <a href="#how" title="How it works">How it works</a>
+        <a href="#privacy" title="Privacy">Privacy</a>
+        <button id="settingsBtn" class="ghost icon" title="Settings">⚙️</button>
+        <button id="modeBtn" class="ghost icon" title="Dark/Light">◐</button>
+      </nav>
     </div>
-
-    <nav class="nav">
-      <a href="#" id="navHome" title="Home">🏠</a>
-      <a href="#how" title="How it works">📘</a>
-      <a href="#privacy" title="Privacy">🔒</a>
-      <button id="settingsBtn" class="ghost icon" title="Settings">⚙️</button>
-      <button id="modeBtn" class="ghost icon" title="Dark / Light">◐</button>
-    </nav>
   </header>
 
-  <!-- ===== HERO ===== -->
-  <section class="hero center">
+  <!-- ===== Hero ===== -->
+  <section class="container">
     <h2>AI-powered cross-sportsbook slip analyzer</h2>
     <p class="muted">Upload screenshots from FanDuel, DraftKings, Hard Rock, BetMGM, and more. Analyze odds, EV, and confidence instantly.</p>
   </section>
 
-  <!-- ===== MAIN APP ===== -->
+  <!-- ===== Main (Simple / Pro) ===== -->
   <main class="container">
 
-  <!-- Top bar: Simple / Pro toggle -->
-  <div class="row between mb">
-    <div class="muted sm">Mode</div>
-    <div class="mode-toggle">
-      <button id="simpleModeBtn" class="primary small">Simple</button>
-      <button id="proModeBtn" class="ghost small">Pro</button>
+    <!-- Mode toggle -->
+    <div class="row between mb">
+      <div class="muted sm">Mode</div>
+      <div class="mode-toggle">
+        <button id="simpleModeBtn" class="primary small">Simple</button>
+        <button id="proModeBtn" class="ghost small">Pro</button>
+      </div>
     </div>
-  </div>
 
-  <!-- 1) Upload -->
-    <section id="card-upload">
-  <div id="drop">
-    <input type="file" id="file" accept="image/*" multiple hidden />
-    <button id="pick">Choose images</button>
-    <div id="thumbs"></div>
-  </div>
+    <!-- 1) Upload -->
+    <section class="card" id="card-upload">
+      <h3>Upload bet screenshot</h3>
+      <p class="muted sm">Drag & drop or choose a file. OCR runs in your browser.</p>
 
-  <div>
-    <button id="analyzeBtn">Analyze</button>
-    <button id="clearBtn">Clear</button>
-    <span id="status"></span>
-  </div>
+      <div class="dropzone" id="drop">
+        <input type="file" id="file" accept="image/*" multiple hidden />
+        <button class="primary" id="pick">Choose images</button>
+        <div id="thumbs" class="thumbs"></div>
+      </div>
+
+      <div class="row gap mt">
+        <button class="primary" id="analyzeBtn">Analyze</button>
+        <button class="ghost" id="clearBtn">Clear</button>
+        <span id="status" class="muted"></span>
+      </div>
     </section>
-    
-  <section class="card" id="card-upload">
-    <h3>Upload bet screenshot</h3>
-    <p class="muted sm">Drag & drop or choose a file. OCR runs in your browser.</p>
-    <div class="dropzone" id="drop">
-      <input type="file" id="file" accept="image/*" multiple hidden />
-      <button class="primary" id="pick">Choose images</button>
-      <div id="thumbs" class="thumbs"></div>
-    </div>
-    <div class="row gap mt">
-      <button class="primary" id="analyzeBtn">Analyze</button>
-      <button class="ghost" id="clearBtn">Clear</button>
-      <span id="status" class="muted"></span>
-    </div>
-  </section>
 
-  <!-- 2) Summary (minimal) -->
-  <section class="card" id="card-summary">
-    <h3>Summary</h3>
-    <div class="kpis">
-      <div class="kpi"><div class="kpi-label">Win chance</div><div id="pWin" class="kpi-value">—</div></div>
-      <div class="kpi"><div class="kpi-label">Expected value</div><div id="pEV" class="kpi-value">—</div></div>
-      <div class="kpi"><div class="kpi-label">Profit if win</div><div id="pProfit" class="kpi-value">—</div></div>
-    </div>
+    <!-- 2) Summary (minimal) -->
+    <section class="card" id="card-summary">
+      <h3>Summary</h3>
 
-    <div class="row gap mt">
-      <div class="grow">
-        <div class="bar"><div id="confBar"></div></div>
-        <div class="muted sm">Confidence: <span id="confPct">—</span></div>
-      </div>
-      <label class="stake-box">Stake ($)
-        <input id="stake" class="input" type="number" value="20" min="0" />
-      </label>
-    </div>
-
-    <ul id="insights" class="bullets mt"></ul>
-
-    <div class="row gap mt">
-      <button class="primary" id="shareBtn">Share link</button>
-      <input id="shareOut" class="input" readonly placeholder="Click Share link" onclick="this.select()" />
-      <button class="ghost" id="genImgBtn">Image</button>
-      <button class="ghost" id="copyImgBtn" disabled>Copy</button>
-      <button class="ghost" id="downloadImgBtn" disabled>Download</button>
-    </div>
-  </section>
-
-  <!-- Pro tools (hidden in Simple mode) -->
-  <section class="card advanced" id="card-edit">
-    <h3>Edit parsed slip</h3>
-
-    <details open>
-      <summary>Basics</summary>
-      <div class="grid cols-2 gap mt">
-        <label>Sportsbook <input id="book" class="input" placeholder="Unknown" /></label>
-        <label>League <input id="league" class="input" placeholder="NBA / NFL / MLB / etc." /></label>
-        <label>Market <input id="market" class="input" placeholder="Moneyline / Spread / Total / Prop" /></label>
-        <label>Title <input id="title" class="input" placeholder="Optional title" /></label>
-      </div>
-    </details>
-
-    <details>
-      <summary>Teams & odds</summary>
-      <div class="grid cols-3 mt gap">
-        <div>
-          <div class="row between"><span class="label">Teams</span><button class="chip" id="addTeam">+ Add</button></div>
-          <ul id="teams" class="list"></ul>
+      <div class="kpis">
+        <div class="kpi">
+          <div class="kpi-label">Win chance</div>
+          <div id="pWin" class="kpi-value">—</div>
         </div>
-        <div>
-          <div class="row between"><span class="label">Your odds</span><button class="chip" id="addOdds">+ Add</button></div>
-          <ul id="odds" class="list"></ul>
+        <div class="kpi">
+          <div class="kpi-label">Expected value</div>
+          <div id="pEV" class="kpi-value">—</div>
         </div>
-        <div>
-          <div class="row between"><span class="label">Compare book</span><button class="chip" id="addComp">+ Add</button></div>
-          <ul id="competitor" class="list"></ul>
-          <p class="muted sm">Optional: paste a price to compare per leg.</p>
+        <div class="kpi">
+          <div class="kpi-label">Profit if win</div>
+          <div id="pProfit" class="kpi-value">—</div>
         </div>
       </div>
-    </details>
-  </section>
 
-  <section class="card advanced" id="card-market">
-    <h3>Live market (optional)</h3>
-    <p class="muted sm">Paste an API key in Settings to fetch The Odds API from your browser.</p>
-    <div class="grid cols-3 gap">
-      <label>Sport key <input id="sportKey" class="input" value="basketball_nba" /></label>
-      <label>Region <input id="region" class="input" value="us" /></label>
-      <label>Markets <input id="markets" class="input" value="h2h,spreads,totals" /></label>
-    </div>
-    <div class="row gap mt">
-      <button class="ghost" id="matchBtn">Match live game</button>
-      <span id="matchStatus" class="muted"></span>
-    </div>
-    <div id="marketOut" class="mt"></div>
-  </section>
+      <div class="row gap mt">
+        <div class="grow">
+          <div class="bar"><div id="confBar"></div></div>
+          <div class="muted sm">Confidence: <span id="confPct">—</span></div>
+        </div>
+        <label class="stake-box">Stake ($)
+          <input id="stake" class="input" type="number" value="20" min="0" />
+        </label>
+      </div>
 
-  <!-- hidden render root for share image -->
-  <div id="shareCard" style="position:absolute;left:-99999px;top:-99999px;"></div>
-  <img id="shareImg" class="share-preview mt" style="display:none" />
-                         </main>
+      <ul id="insights" class="bullets mt"></ul>
 
-  <!-- ===== SETTINGS DIALOG ===== -->
+      <div class="row gap mt">
+        <button class="primary" id="shareBtn">Share link</button>
+        <input id="shareOut" class="input" readonly placeholder="Click Share link" onclick="this.select()" />
+        <button class="ghost" id="genImgBtn">Image</button>
+        <button class="ghost" id="copyImgBtn" disabled>Copy</button>
+        <button class="ghost" id="downloadImgBtn" disabled>Download</button>
+      </div>
+    </section>
+
+    <!-- Pro tools (hidden in Simple mode) -->
+    <section class="card advanced" id="card-edit">
+      <h3>Edit parsed slip</h3>
+
+      <details open>
+        <summary>Basics</summary>
+        <div class="grid cols-2 gap mt">
+          <label>Sportsbook <input id="book" class="input" placeholder="Unknown" /></label>
+          <label>League <input id="league" class="input" placeholder="NBA / NFL / MLB / etc." /></label>
+          <label>Market <input id="market" class="input" placeholder="Moneyline / Spread / Total / Prop" /></label>
+          <label>Title <input id="title" class="input" placeholder="Optional title" /></label>
+        </div>
+      </details>
+
+      <details>
+        <summary>Teams & odds</summary>
+        <div class="grid cols-3 mt gap">
+          <div>
+            <div class="row between"><span class="label">Teams</span><button class="chip" id="addTeam">+ Add</button></div>
+            <ul id="teams" class="list"></ul>
+          </div>
+          <div>
+            <div class="row between"><span class="label">Your odds</span><button class="chip" id="addOdds">+ Add</button></div>
+            <ul id="odds" class="list"></ul>
+          </div>
+          <div>
+            <div class="row between"><span class="label">Compare book</span><button class="chip" id="addComp">+ Add</button></div>
+            <ul id="competitor" class="list"></ul>
+            <p class="muted sm">Optional: paste a price per leg to compare.</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="card advanced" id="card-market">
+      <h3>Live market (optional)</h3>
+      <p class="muted sm">Paste an API key in Settings to fetch The Odds API from your browser.</p>
+
+      <div class="grid cols-3 gap">
+        <label>Sport key <input id="sportKey" class="input" value="basketball_nba" /></label>
+        <label>Region <input id="region" class="input" value="us" /></label>
+        <label>Markets <input id="markets" class="input" value="h2h,spreads,totals" /></label>
+      </div>
+
+      <div class="row gap mt">
+        <button class="ghost" id="matchBtn">Match live game</button>
+        <span id="matchStatus" class="muted"></span>
+      </div>
+      <div id="marketOut" class="mt"></div>
+    </section>
+
+    <!-- Hidden render root for share image -->
+    <div id="shareCard" style="position:absolute;left:-99999px;top:-99999px;"></div>
+    <img id="shareImg" class="share-preview mt" style="display:none" />
+
+    <!-- How / Privacy (simple copy) -->
+    <section class="card" id="how">
+      <h3>How it works</h3>
+      <ul class="bullets">
+        <li>Upload screenshots; OCR runs in your browser (no upload).</li>
+        <li>We auto-detect teams and odds (you can edit in Pro mode).</li>
+        <li>We compute implied probability, EV, Kelly, and confidence.</li>
+        <li>Optional live market lookup via your own Odds API key.</li>
+        <li>Create a shareable link or branded image card.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="privacy">
+      <h3>Privacy</h3>
+      <ul class="bullets">
+        <li>OCR & analysis happen locally in your browser.</li>
+        <li>Live market calls, if used, go directly to The Odds API with your key.</li>
+        <li>No accounts or sportsbook credentials. Not betting advice.</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <!-- ===== Settings dialog ===== -->
   <dialog id="settings">
     <form method="dialog" class="card">
       <h3>Settings</h3>
-      <label>Odds API key (optional)</label>
-      <input id="oddsKey" class="input" placeholder="Enter your API key" />
-      <p class="muted sm">Used for real-time market comparison. Stored locally only.</p>
-      <menu>
+      <label>Odds API key (optional)
+        <input id="oddsKey" class="input" placeholder="The Odds API key" />
+      </label>
+      <p class="muted sm">Stored locally in your browser only.</p>
+      <div class="row gap mt">
         <button id="saveSettings" class="primary">Save</button>
-        <button value="cancel" class="ghost">Cancel</button>
-      </menu>
+        <button value="cancel" class="ghost">Close</button>
+      </div>
     </form>
   </dialog>
 
-  <!-- ===== FOOTER ===== -->
-  <footer class="footer center">
-    <p>© <span id="year"></span> CrossSlipPro — Built by <b>VulnerableJeff</b> · <span class="muted">Powered by CSU Predicts</span></p>
+  <!-- ===== Footer ===== -->
+  <footer class="site-footer">
+    <div class="container muted sm">
+      © <span id="year"></span> CrossSlipPro — Built by <b>VulnerableJeff</b> · Powered by CSU Predicts
+    </div>
   </footer>
 
+  <!-- App script -->
   <script src="script.js"></script>
 </body>
 </html>
