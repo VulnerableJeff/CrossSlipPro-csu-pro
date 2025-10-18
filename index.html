@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CrossSlip Ultra — CSU Pro</title>
+  <meta name="description" content="CSU Pro — AI-powered slip analyzer with OCR, EV, Kelly, and multi-book compare.">
+  <link rel="icon" href="csu-logo-gray.svg">
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#6b7280;
+      --glass:rgba(255,255,255,.78);
+      --stroke:rgba(15,23,42,.06);
+      --accent:#111827;
+      --bg-a:#f8fafc; --bg-b:#ffffff;
+      --btn:#111827; --btnText:#ffffff;
+      --panel:#ffffff;
+    }
+    .dark:root{
+      --ink:#e5e7eb; --muted:#9ca3af;
+      --glass:rgba(17,24,39,.6);
+      --stroke:rgba(255,255,255,.06);
+      --accent:#f3f4f6;
+      --bg-a:#0b1220; --bg-b:#0b1220;
+      --btn:#e5e7eb; --btnText:#0b1220;
+      --panel:#111827;
+    }
+    html,body{margin:0;background:linear-gradient(180deg,var(--bg-a),var(--bg-b));color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    *{-webkit-tap-highlight-color:transparent}
+    header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.86);backdrop-filter:saturate(160%) blur(14px);
+      border-bottom:1px solid var(--stroke);box-shadow:0 6px 28px rgba(2,6,23,.06)}
+    .dark header{background:rgba(17,24,39,.7)}
+    .header-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;gap:14px}
+    .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
+    .brand img{height:40px;width:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+    .wordmark{font-weight:900;font-size:20px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin-top:2px}
+    .chip{font-size:12px;color:#111827;background:#e5e7eb;padding:6px 10px;border-radius:999px;font-weight:800;border:1px solid #d1d5db}
+    .dark .chip{color:#0b1220;background:#e5e7eb}
+    main{padding:18px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+    .panel{border:1px solid var(--stroke);background:var(--glass);backdrop-filter:saturate(160%) blur(14px);
+      border-radius:16px;padding:16px;box-shadow:0 8px 30px rgba(2,6,23,.06)}
+    .panel h3{margin:0 0 10px 0;font-size:14px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+    .muted{color:var(--muted);font-size:12px}
+    .drop{display:grid;place-items:center;text-align:center;border:1.5px dashed #c7c9ce;border-radius:16px;padding:26px;background:var(--panel)}
+    .dark .drop{border-color:#374151}
+    .icon{height:48px;width:48px;border-radius:999px;background:#f3f4f6;display:grid;place-items:center;font-size:22px;margin-bottom:10px}
+    .dark .icon{background:#1f2937}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .input{appearance:none;width:100%;padding:12px 14px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.7);font-size:14px;color:#0f172a}
+    .dark .input{background:#111827;border-color:#374151;color:#e5e7eb}
+    .num{width:110px}
+    .btn{appearance:none;border:0;padding:12px 18px;border-radius:9999px;font-weight:800;line-height:1;cursor:pointer;
+      transition:transform .15s ease,box-shadow .15s ease,background .2s ease,color .2s ease}
+    .btn:active{transform:translateY(0)}
+    .btn-primary{color:var(--btnText);background:var(--btn);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+    .btn-primary:hover{transform:translateY(-1px)}
+    .btn-ghost{color:var(--ink);background:var(--panel);border:1px solid #e5e7eb;box-shadow:0 4px 10px rgba(2,6,23,.06)}
+    .dark .btn-ghost{border-color:#374151}
+    .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .badge{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid #e5e7eb;background:#f8fafc;font-weight:700}
+    .dark .badge{background:#111827;border-color:#374151}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .team{border:1px solid #eef2f7;background:#fff;border-radius:12px;padding:10px}
+    .dark .team{background:#0b1220;border-color:#374151}
+    .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px}
+    .wl{display:flex;gap:6px}
+    .wl button{width:34px;height:34px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;font-weight:800;cursor:pointer}
+    .dark .wl button{background:#111827;border-color:#374151;color:#e5e7eb}
+    .wl button.active.win{background:#ecfeff;border-color:#bae6fd;color:#0369a1}
+    .wl button.active.loss{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+    .ring{display:flex;align-items:center;gap:10px}
+    .score{font-size:12px;color:var(--muted)}
+    footer{padding:18px;text-align:center;color:#94a3b8;font-size:12px}
+    .about p{margin:0 0 10px 0;line-height:1.6}
+    .toolbar{display:flex;gap:8px;align-items:center}
+    .switch{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a class="brand" href="./" aria-label="Home">
+        <img src="./csu-logo-gray.svg" alt="CSU Pro logo" onerror="this.style.display='none'">
+        <div class="wordmark">CSU PRO</div>
+      </a>
+      <div class="toolbar">
+        <div class="switch">
+          <label><input type="checkbox" id="darkToggle"> Dark</label>
+        </div>
+        <div class="switch">
+          Bankroll $ <input type="number" id="bankroll" value="2500" style="width:90px" class="input">
+        </div>
+        <button id="exportCsv" class="btn btn-ghost">Export CSV</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app"></main>
+  <footer>© <span id="yr"></span> CrossSlip Ultra • CSU Pro • Not betting advice</footer>
+
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    // Theme persistence
+    const htmlEl = document.documentElement;
+    const savedTheme = localStorage.getItem('csu_theme');
+    if(savedTheme==='dark'){ htmlEl.classList.add('dark'); document.getElementById('darkToggle').checked = true; }
+    document.getElementById('darkToggle').addEventListener('change', (e)=>{
+      if(e.target.checked){ htmlEl.classList.add('dark'); localStorage.setItem('csu_theme','dark'); }
+      else { htmlEl.classList.remove('dark'); localStorage.setItem('csu_theme','light'); }
+    });
+
+    const e = React.createElement;
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    const clamp01 = (x) => Math.max(0, Math.min(1, x));
+    const americanToProb = (odds) => (odds > 0 ? 100 / (odds + 100) : -odds / (-odds + 100));
+    const toDecimal = (odds) => odds>0 ? (1 + odds/100) : (1 + 100/Math.abs(odds));
+    const ODDS_RE = /([+\-]\s?\d{2,4})/;
+    const LS_RESULTS = "csu_results_v2";
+    const LS_TEAMS   = "csu_teams_v2";
+
+    function bytes(n){return n>1048576? (n/1048576).toFixed(1)+' MB' : n>1024? (n/1024).toFixed(1)+' KB' : n+' B'}
+
+    function parseImpliedFromText(text){
+      const m = text.match(ODDS_RE);
+      if(!m) return null;
+      const num = Number(m[0].replace(/\s/g,''));
+      if(Number.isNaN(num)) return null;
+      return americanToProb(num);
+    }
+
+    function adjustProb(base, aWin=0.5, bWin=0.5, aMargin=0, bMargin=0, aInj=0, bInj=0){
+      if(base==null) return null;
+      const formDelta   = (aWin - bWin) * 0.10;
+      const marginDelta = Math.max(-0.04, Math.min(0.04, (aMargin - bMargin) * 0.003));
+      const injuryDelta = -0.01 * (aInj - bInj);
+      return clamp01(base + formDelta + marginDelta + injuryDelta);
+    }
+
+    function kellyFraction(p, priceDecimal){
+      const b = priceDecimal - 1, q = 1 - p;
+      return Math.max(0, ((b*p) - q) / b);
+    }
+
+    function Ring({value=0,size=72,stroke=10,color='var(--accent)'}){
+      const pct = clamp01(value);
+      const r=(size-stroke)/2, c=2*Math.PI*r;
+      return e('div',{className:'ring'},
+        e('svg',{width:size,height:size,style:{display:'block'}},
+          e('circle',{cx:size/2,cy:size/2,r,stroke:'#e5e7eb',strokeWidth:stroke,fill:'none'}),
+          e('circle',{cx:size/2,cy:size/2,r,stroke: getComputedStyle(document.documentElement).getPropertyValue('--btn') || '#111827', strokeWidth:stroke,fill:'none',strokeLinecap:'round',
+            strokeDasharray:`${c} ${c}`,strokeDashoffset:(1-pct)*c,transform:`rotate(-90 ${size/2} ${size/2})`}),
+          e('text',{x:'50%',y:'50%',dominantBaseline:'central',textAnchor:'middle',
+            style:{fontWeight:900,fontSize:14,fill:'var(--ink)'}}, Math.round(pct*100)+'%')
+        ),
+      );
+    }
+
+    function WLPicker({value='-----', onChange}){
+      const chars = value.padEnd(5,'-').slice(0,5).split('');
+      const set = (i,letter)=>{ chars[i]=letter; onChange(chars.join('')); };
+      const btn = (i,label)=>e('button',{
+        className: 'btn-wl '+(chars[i]===label.toUpperCase()? 'active '+(label==='W'?'win':'loss') : ''),
+        onClick:()=>set(i,label.toUpperCase())
+      },label);
+      return e('div',{className:'wl'},
+        ...[0,1,2,3,4].map(i=>e('div',{key:i},
+          btn(i,'W'),
+          btn(i,'L'),
+          e('button',{onClick:()=>set(i,'-')},'–')
+        ))
+      );
+    }
+
+    function pctFromWL(wl){
+      const arr = wl.split('').filter(c=>c==='W'||c==='L');
+      if(arr.length===0) return 0.5;
+      const wins = arr.filter(c=>c==='W').length;
+      return wins/arr.length;
+    }
+
+    function TeamCard({ side='A', data, onChange }){
+      const set=(k,v)=>onChange({...data,[k]:v});
+      return e('div',{className:'team'},
+        e('div',{className:'k'}, `Team ${side}`),
+        e('div',{className:'row'},
+          e('input',{className:'input',placeholder:'Team name (optional)', value:data.name||'', onChange:e=>set('name',e.target.value)}),
+          e('input',{className:'input num',type:'number',step:'0.01',min:'0',max:'1',placeholder:'Win%',
+            value:data.win ?? '', onChange:e=>set('win',Number(e.target.value))}),
+          e('input',{className:'input num',type:'number',step:'1',placeholder:'+/- margin',
+            value:data.margin ?? '', onChange:e=>set('margin',Number(e.target.value))}),
+          e('input',{className:'input num',type:'number',step:'1',placeholder:'Injuries',
+            value:data.inj ?? '', onChange:e=>set('inj',Number(e.target.value))}),
+        ),
+        e('div',{className:'k',style:{marginTop:8}},'Last 5 (tap to set):'),
+        e(WLPicker,{value:data.wl||'-----', onChange:(wl)=>set('wl',wl)})
+      );
+    }
+
+    function About(){
+      return e('section',{className:'panel about', style:{maxWidth:1000, marginInline:'auto'}},
+        e('h3',null,'About CSU Pro'),
+        e('p',null,'CSU Pro transforms sportsbook screenshots into structured slips, computes implied probability, Expected Value and Kelly sizing, and blends recent form, scoring margin, and injuries into a cleaner win probability. Clean iOS-style UI, local-first privacy, and export/share tools.')
+      );
+    }
+
+    function App(){
+      const [results,setResults] = useState({});
+      const [files,setFiles] = useState([]);
+      const [imgUrl,setImgUrl] = useState('');
+      const [auto,setAuto] = useState(true);
+      const [teams,setTeams] = useState({A:{name:'',win:0.5,margin:0,inj:0,wl:'-----'}, B:{name:'',win:0.5,margin:0,inj:0,wl:'-----'}});
+      const [bankroll, setBankroll] = useState(Number(localStorage.getItem('csu_bankroll')||2500));
+
+      useEffect(()=>{ localStorage.setItem('csu_bankroll', String(bankroll)); },[bankroll]);
+
+      // wire input control in header
+      const brEl = document.getElementById('bankroll');
+      if(brEl){ brEl.value = String(bankroll); brEl.oninput = (ev)=> setBankroll(Number(ev.target.value||0)); }
+
+      // CSV export
+      document.getElementById('exportCsv').onclick = ()=>{
+        const rows = [['Name','Implied','Adjusted','EV@100','Kelly','Kelly$']];
+        for(const [name,rec] of Object.entries(results)){
+          const k$ = (rec.kelly??0)*bankroll;
+          rows.push([name, Math.round((rec.base??0.5)*100)+'%', Math.round((rec.model??rec.base??0.5)*100)+'%', (rec.ev??0).toFixed(2), (rec.kelly??0).toFixed(3), k$.toFixed(2)]);
+        }
+        const csv = rows.map(r=>r.join(',')).join('\n');
+        const blob = new Blob([csv],{type:'text/csv'});
+        const u = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = u; a.download = 'csu-results.csv'; a.click();
+        URL.revokeObjectURL(u);
+      };
+
+      // Paste images from clipboard
+      useEffect(()=>{
+        function onPaste(ev){
+          const items = ev.clipboardData?.items || [];
+          for(const it of items){
+            if(it.type.startsWith('image/')){
+              const blob = it.getAsFile();
+              if(blob){
+                const f = new File([blob], 'paste-'+Date.now()+'.png', {type: blob.type});
+                onFiles([f]);
+              }
+            }
+          }
+        }
+        window.addEventListener('paste', onPaste);
+        return ()=> window.removeEventListener('paste', onPaste);
+      },[]);
+
+      useEffect(()=>{
+        try{
+          const r = JSON.parse(localStorage.getItem(LS_RESULTS)||'{}');
+          const t = JSON.parse(localStorage.getItem(LS_TEAMS)||'{}');
+          if(r && typeof r==='object') setResults(r);
+          if(t && t.A) setTeams(t);
+        }catch(_){}
+      },[]);
+      useEffect(()=>{ try{localStorage.setItem(LS_RESULTS,JSON.stringify(results));}catch(_){ } },[results]);
+      useEffect(()=>{ try{localStorage.setItem(LS_TEAMS,JSON.stringify(teams));}catch(_){ } },[teams]);
+
+      const onFiles = useCallback(async (incoming)=>{
+        const list = Array.from(incoming||[]).slice(0,12);
+        if(list.length===0) return;
+        setFiles(p=>p.concat(list));
+        for(const f of list) await analyzeOne(f);
+      },[]);
+
+      async function analyzeOne(file){
+        let text = '';
+        try{
+          const o = await Tesseract.recognize(file,'eng');
+          text = (o && o.data && o.data.text) ? o.data.text : '';
+        }catch(_){}
+        const base = parseImpliedFromText(text) ?? 0.56;
+        const aWin = teams.A.win ?? pctFromWL(teams.A.wl);
+        const bWin = teams.B.win ?? pctFromWL(teams.B.wl);
+        const model = adjustProb(base, aWin, bWin, teams.A.margin, teams.B.margin, teams.A.inj, teams.B.inj);
+
+        const stake = 100;
+        const dec = (model>=0.5)? (1 + 100/110) : (1 + 110/100); // placeholder
+        const ev  = (model * (dec - 1) * stake) - ((1 - model) * stake);
+        const kelly = kellyFraction(model, dec);
+
+        setResults(r=>({...r,[file.name]:{base,model,bytes:file.size,ev,kelly}}));
+      }
+
+      function recomputeAll(){
+        setResults(r=>{
+          const aW = (teams.A.win!==undefined && !isNaN(teams.A.win))? teams.A.win : pctFromWL(teams.A.wl);
+          const bW = (teams.B.win!==undefined && !isNaN(teams.B.win))? teams.B.win : pctFromWL(teams.B.wl);
+          const next={};
+          for(const k in r){
+            const base=r[k].base ?? 0.56;
+            const model = adjustProb(base, aW,bW, teams.A.margin,teams.B.margin, teams.A.inj,teams.B.inj);
+            const stake = 100;
+            const dec = (model>=0.5)? (1 + 100/110) : (1 + 110/100);
+            const ev  = (model * (dec - 1) * stake) - ((1 - model) * stake);
+            const kelly = kellyFraction(model, dec);
+            next[k]={...r[k], model, ev, kelly};
+          }
+          return next;
+        });
+      }
+      useEffect(()=>{ recomputeAll(); },[bankroll]);
+      useEffect(()=>{ if(auto) recomputeAll(); },[teams,auto]);
+
+      const onDrop = (e)=>{ e.preventDefault(); onFiles(e.dataTransfer && e.dataTransfer.files); }
+      async function addFromUrl(){
+        if(!imgUrl) return;
+        try{
+          const res = await fetch(imgUrl,{mode:'cors'});
+          const blob = await res.blob();
+          const f = new File([blob], imgUrl.split('/').pop() || 'slip.png');
+          await onFiles([f]); setImgUrl('');
+        }catch(_){ alert('Could not fetch that image (CORS).'); }
+      }
+
+      return e(React.Fragment,null,
+        e('section',{className:'panel'},
+          e('h3',null,'Upload'),
+          e('div',{className:'drop', onDragOver:(ev)=>ev.preventDefault(), onDrop:onDrop},
+            e('div',{className:'icon'},'⬆️'),
+            e('div',{style:{fontWeight:800}},'Drop screenshots or paste (Ctrl/Cmd+V)'),
+            e('div',{className:'muted'},'or'),
+            e('div',{className:'row',style:{marginTop:8}},
+              e('button',{className:'btn btn-primary',onClick:()=>document.getElementById('picker').click()},'Browse'),
+              e('input',{id:'picker',type:'file',accept:'image/*,application/pdf',multiple:true,style:{display:'none'},
+                onChange:(ev)=>onFiles(ev.target.files)})
+            ),
+            e('div',{className:'row',style:{marginTop:10}},
+              e('input',{className:'input',placeholder:'https://example.com/slip.png',value:imgUrl,onChange:(ev)=>setImgUrl(ev.target.value)}),
+              e('button',{className:'btn btn-ghost',onClick:addFromUrl},'Add URL')
+            ),
+            e('div',{className:'muted',style:{marginTop:8}},'Tip: host must allow CORS for in‑browser OCR when using URLs.')
+          ),
+          e('div',{className:'badges'}, ...files.map(f=>e('div',{className:'badge',key:f.name}, `${f.name} • ${bytes(f.size)}`)))
+        ),
+        e('section',{className:'panel'},
+          e('h3',null,'EdgeLab'),
+          e('div',{className:'grid2'},
+            e(TeamCard,{side:'A',data:teams.A,onChange:t=>setTeams(s=>({...s,A:t}))}),
+            e(TeamCard,{side:'B',data:teams.B,onChange:t=>setTeams(s=>({...s,B:t}))})
+          ),
+          e('div',{className:'row',style:{marginTop:10,alignItems:'center',justifyContent:'space-between'}},
+            e('label',null,
+              e('input',{type:'checkbox',checked:auto,onChange:(ev)=>setAuto(ev.target.checked)}),' Live Auto‑Recompute'),
+            e('button',{className:'btn btn-primary',onClick:recomputeAll},'Recompute Model')
+          )
+        ),
+        e('section',{className:'panel'},
+          e('h3',null,'Results'),
+          e('div',{className:'row',style:{gap:12,alignItems:'stretch',flexWrap:'wrap'}},
+            ...Object.entries(results).map(([name,rec])=>e('div',{key:name,style:{display:'flex',alignItems:'center',gap:14,border:'1px solid #eef2f7',borderRadius:12,padding:'12px 14px',background:'var(--panel)'}},
+              e(Ring,{value:rec.model ?? rec.base ?? 0.5}),
+              e('div',null,
+                e('div',{style:{fontWeight:900}}, name),
+                e('div',{className:'score'}, `implied ${Math.round((rec.base??0.5)*100)}% • adjusted ${Math.round((rec.model??rec.base??0.5)*100)}%`),
+                e('div',{className:'score'}, `EV @ $100: ${rec.ev?.toFixed(2) ?? '—'} • Kelly: ${(rec.kelly??0).toFixed(3)} • Kelly $ @ bankroll: $${(((rec.kelly??0)*bankroll)||0).toFixed(2)}`)
+              )
+            ))
+          )
+        ),
+        e(About,null)
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+  </script>
+</body>
+</html>
