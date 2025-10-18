@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SlipScan</title>
+    <meta name="description" content="SlipScan – AI Edge Analyzer">
+    <style id="slipscan-ios-theme">
+      :root{
+        --ink:#0f172a;
+        --muted:#64748b;
+        --ring:#60a5fa;
+        --glass:rgba(255,255,255,.75);
+        --stroke:rgba(15,23,42,.06);
+        --primary-start:#ec4899;
+        --primary-end:#8b5cf6;
+      }
+      html,body{background:linear-gradient(180deg,#f8fafc,#ffffff);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0}
+      *{-webkit-tap-highlight-color:transparent}
+      ::selection{background:#fee2e2}
+      .panel{background:var(--glass)!important;backdrop-filter:saturate(180%) blur(14px);border:1px solid var(--stroke)!important;box-shadow:0 6px 24px rgba(2,6,23,.06)}
+      .dropZone{border:1.5px dashed rgba(99,102,241,.35)!important;background:#fff!important}
+      .primary,.ghost{appearance:none;border:0;padding:12px 18px;border-radius:9999px;font-weight:700;line-height:1;cursor:pointer;transition:transform .15s ease, box-shadow .15s ease, opacity .15s ease, background .2s ease;user-select:none;-webkit-user-select:none}
+      .primary{color:#fff;background:linear-gradient(135deg,var(--primary-start),var(--primary-end));box-shadow:0 6px 16px rgba(236,72,153,.35), 0 2px 6px rgba(139,92,246,.25)}
+      .primary:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(236,72,153,.35), 0 4px 10px rgba(139,92,246,.28)}
+      .primary:active{transform:translateY(0)}
+      .primary:focus-visible{outline:2px solid transparent;box-shadow:0 0 0 4px rgba(96,165,250,.45), 0 6px 16px rgba(236,72,153,.35)}
+      .ghost{color:var(--ink);background:rgba(255,255,255,.9);border:1px solid #e5e7eb;box-shadow:0 4px 10px rgba(2,6,23,.06)}
+      .ghost:hover{background:#ffffff;transform:translateY(-1px)}
+      .ghost:focus-visible{outline:2px solid transparent;box-shadow:0 0 0 4px rgba(96,165,250,.35), 0 4px 10px rgba(2,6,23,.08)}
+      .icon{background:#eef2ff!important}
+      .brand{letter-spacing:.18em!important;text-transform:uppercase!important;background:linear-gradient(90deg,#ec4899,#db2777);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900!important}
+      header{box-shadow:0 8px 30px rgba(2,6,23,.06)}
+      .ui-input{appearance:none;width:100%;padding:12px 14px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;box-shadow: inset 0 1px 0 rgba(255,255,255,.7);font-size:14px}
+      .ui-input:focus{outline:none;border-color:#bfdbfe;box-shadow:0 0 0 4px rgba(59,130,246,.15)}
+    </style>
+
+    <!-- React & ReactDOM UMD builds -->
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+
+    <!-- Tesseract UMD build -->
+    <script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script>
+      (function () {
+        const e = React.createElement;
+
+        const clamp01 = (x) => Math.max(0, Math.min(1, x));
+        const americanToProb = (odds) => (odds > 0 ? 100 / (odds + 100) : -odds / (-odds + 100));
+        const ODDS_RE = /([+\-]\s?\d{2,4})/;
+        const LS_KEY = "slipscan_results_v1";
+
+        function parseImpliedFromText(text) {
+          const m = text.match(ODDS_RE);
+          if (!m) return null;
+          const num = Number(m[0].replace(/\s/g, ""));
+          if (Number.isNaN(num)) return null;
+          return americanToProb(num);
+        }
+
+        function adjustProb(base, aWin = 0.5, bWin = 0.5, aMargin = 0, bMargin = 0, aInj = 0, bInj = 0) {
+          if (base == null) return null;
+          const formDelta = (aWin - bWin) * 0.10;
+          const marginDelta = Math.max(-0.04, Math.min(0.04, (aMargin - bMargin) * 0.003));
+          const injuryDelta = -0.01 * (aInj - bInj);
+          return clamp01(base + formDelta + marginDelta + injuryDelta);
+        }
+
+        const styles = {
+          root: { minHeight:'100dvh', background:'transparent', color:'#0f172a', fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif" },
+          header: { position:'sticky', top:0, zIndex:10, backdropFilter:'blur(12px)', background:'rgba(255,255,255,0.8)', borderBottom:'1px solid rgba(0,0,0,0.05)' },
+          headerContent: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 18px' },
+          logoLink: { display:'flex', alignItems:'center', textDecoration:'none' },
+          gradientBar: { height:3, background:'linear-gradient(90deg,#ec4899,#db2777,#22c55e,#0ea5e9)' },
+          logoImg: { height:40, width:'auto', borderRadius:8 },
+          logoFallback: { height:40, width:40, borderRadius:8, display:'grid', placeItems:'center', background:'#ffe4e6' },
+          brand: {}, headerRight: { fontSize:14, color:'#64748b' }, headerText: { fontWeight:600 },
+          main: { padding:18, display:'grid', gap:14, gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))' },
+          panel: { border:'1px solid rgba(0,0,0,0.06)', background:'rgba(255,255,255,0.6)', backdropFilter:'blur(12px)', borderRadius:16, padding:14 },
+          dropZone: { display:'grid', placeItems:'center', textAlign:'center', border:'2px dashed rgba(56,189,248,0.5)', borderRadius:16, padding:24, background:'#fff' },
+          icon: { height:44, width:44, borderRadius:999, background:'#eff6ff', display:'grid', placeItems:'center', marginBottom:10, fontSize:22 },
+          h7: { fontWeight:700 }, h6: { fontWeight:800, fontSize:14, marginBottom:8 },
+          dim: { color:'#64748b', fontSize:12 }, note: { color:'#64748b', fontSize:12, marginTop:6 },
+          input: { flex:1, padding:'8px 10px', border:'1px solid #e5e7eb', borderRadius:8 },
+          foot: { textAlign:'center', padding:'12px 0 18px', color:'#94a3b8', fontSize:12 }
+        };
+
+        function App() {
+          const [files, setFiles] = React.useState([]);
+          const [results, setResults] = React.useState({});
+          const [imgUrl, setImgUrl] = React.useState("");
+          const [logoOk, setLogoOk] = React.useState(true);
+          const inputRef = React.useRef(null);
+
+          React.useEffect(() => {
+            try {
+              const raw = localStorage.getItem(LS_KEY);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') setResults(parsed);
+              }
+            } catch {}
+          }, []);
+
+          React.useEffect(() => {
+            try { localStorage.setItem(LS_KEY, JSON.stringify(results)); } catch {}
+          }, [results]);
+
+          const onFiles = React.useCallback(async (incoming) => {
+            const list = Array.from(incoming || []).slice(0, 8);
+            if (list.length === 0) return;
+            setFiles((prev) => prev.concat(list));
+            for (const f of list) await analyzeOne(f);
+          }, []);
+
+          async function analyzeOne(file) {
+            let text = "";
+            try {
+              const out = await window.Tesseract.recognize(file, "eng");
+              text = (out && out.data && out.data.text) ? out.data.text : "";
+            } catch (err) {
+              text = "";
+            }
+            const base = parseImpliedFromText(text) ?? 0.56;
+            setResults((r) => {
+              const cur = r[file.name] || { aWin:.5,bWin:.5,aFor:0,aAg:0,bFor:0,bAg:0,aInj:0,bInj:0 };
+              const model = adjustProb(base, cur.aWin, cur.bWin, cur.aFor-cur.aAg, cur.bFor-cur.bAg, cur.aInj, cur.bInj);
+              const next = {}; for (const k in r) next[k] = r[k]; next[file.name] = { ...cur, base, model };
+              return next;
+            });
+          }
+
+          const onDrop = (e) => { e.preventDefault(); onFiles(e.dataTransfer && e.dataTransfer.files); };
+
+          async function addFromUrl() {
+            if (!imgUrl) return;
+            try {
+              const res = await fetch(imgUrl, { mode: "cors" });
+              const blob = await res.blob();
+              const f = new File([blob], imgUrl.split("/").pop() || "slip.png");
+              await onFiles([f]);
+              setImgUrl("");
+            } catch (err) {
+              alert("Could not fetch that image.");
+            }
+          }
+
+          return e("div", { style:styles.root },
+            e("header", { style:styles.header },
+              e("div", { style:styles.headerContent },
+                e("a", { href:"./", style:styles.logoLink },
+                  logoOk ? e("img", { src:"./slipscan-logo.png", alt:"SlipScan Logo", style:styles.logoImg, onError:()=>setLogoOk(false) })
+                         : e("div", { style:styles.logoFallback, "aria-label":"logo fallback" }, "🎯")
+                ),
+                e("a", { href:"./", style:{ textDecoration:'none' } },
+                  e("div", { className:"brand", style:styles.brand }, "SLIP", e("span", null, "SCAN"))
+                ),
+                e("div", { style:styles.headerRight },
+                  e("span", { style:styles.headerText }, "AI Edge Analyzer")
+                )
+              ),
+              e("div", { style:styles.gradientBar })
+            ),
+            e("main", { style:styles.main },
+              e("section", { className:"panel", style:styles.panel, onDragOver:(e)=>e.preventDefault(), onDrop:onDrop },
+                e("div", { className:"h6", style:styles.h6 }, "Add slips"),
+                e("div", { className:"dropZone", style:styles.dropZone },
+                  e("div", { className:"icon", style:styles.icon }, "⬆️"),
+                  e("div", { className:"h7", style:styles.h7 }, "Drop screenshots"),
+                  e("div", { className:"dim", style:styles.dim }, "or"),
+                  e("button", { className:"primary", onClick:()=>inputRef.current && inputRef.current.click() }, "Browse"),
+                  e("input", { ref:inputRef, type:"file", accept:"image/*,application/pdf", multiple:true, style:{display:'none'}, onChange:(e)=>onFiles(e.target.files) })
+                ),
+                e("div", { style:{display:'flex', gap:8, marginTop:10, flexWrap:'wrap'} },
+                  e("input", { className:"ui-input", value:imgUrl, onChange:(e)=>setImgUrl(e.target.value), placeholder:"https://example.com/slip.png" }),
+                  e("button", { className:"ghost", onClick:addFromUrl }, "Add URL")
+                ),
+                e("div", { className:"note", style:styles.note }, "Tip: the image host must allow CORS for in-browser OCR.")
+              )
+            ),
+            e("footer", { style:styles.foot }, "© 2025 SlipScan • Not betting advice")
+          );
+        }
+
+        ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+      })();
+    </script>
+  </body>
+</html>
